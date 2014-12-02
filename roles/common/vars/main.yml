@@ -1,0 +1,8 @@
+---
+# default config for ec2 instances
+
+instance_type: t2.micro
+security_group: system-testing # this is how all hosts will be identified
+image: ami-9eaa1cf6 
+region: us-east-1
+keypair: system-testing

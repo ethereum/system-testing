@@ -1,0 +1,12 @@
+---
+
+- name: Terminate all ec2 instances 
+  hosts: security_group_system-testing # this is provided by ec2.py
+  user: ubuntu # provide the priviate key via cmdline: --private-key=system-testing.pem
+  gather_facts: false
+  roles:
+      - common
+
+  tasks:
+      # TODO is should be possible to include this without the full path, but it isn't
+      - include: roles/common/tasks/terminate_ec2.yml
