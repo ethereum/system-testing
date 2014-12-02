@@ -1,0 +1,9 @@
+---
+- name: start new ec2 instances
+  ec2:  group={{ security_group }}
+        instance_type={{ instance_type}} 
+        image={{ image }} 
+        wait=true 
+        region={{ region }}
+        keypair={{ keypair }}
+  register: ec2
