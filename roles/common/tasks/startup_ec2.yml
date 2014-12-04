@@ -7,4 +7,5 @@
         region={{ region }}
         key_name={{ keypair }}
         exact_count=2
+        user_data="#include https://get.docker.com"
   register: ec2
