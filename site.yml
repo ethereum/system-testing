@@ -1,6 +1,6 @@
 ---
 
-- name: Provision an EC2 node
+- name: Provision EC2 nodes
   hosts: localhost
   gather_facts: false
   roles:

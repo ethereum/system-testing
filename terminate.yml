@@ -2,7 +2,7 @@
 
 - name: Terminate all ec2 instances 
   hosts: security_group_system-testing # this is provided by ec2.py
-  user: ubuntu # provide the priviate key via cmdline: --private-key=system-testing.pem
+  remote_user: ubuntu # provide the priviate key via cmdline: --private-key=system-testing.pem
   gather_facts: false
   roles:
       - common
