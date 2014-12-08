@@ -1,0 +1,6 @@
+---
+- name: Install python and pip
+  apt: name=python-pip
+
+- name: Install docker python module
+  pip: name=docker-py

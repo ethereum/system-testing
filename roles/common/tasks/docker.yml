@@ -1,0 +1,7 @@
+---
+- name: Start ethereum docker client 
+  docker: image=sveneh/pyethereum-develop 
+#     register: output
+#   - name: Print output
+#     debug: msg="{{ output.stdout }}"
+
