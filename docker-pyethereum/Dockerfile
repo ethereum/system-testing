@@ -8,6 +8,9 @@ RUN cd pyethereum && bin/buildout
 
 ADD config.cfg /pyethereum/bin/config.cfg
 
+#default port for incoming requests
+EXPOSE 30303
+
 WORKDIR /pyethereum/bin 
 
 ENTRYPOINT ["./pyeth"]
