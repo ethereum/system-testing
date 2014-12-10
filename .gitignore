@@ -1,3 +1,5 @@
 system-testing.pem
+testing.yml
+venv/
 *.swp
 *~

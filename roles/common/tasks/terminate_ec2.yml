@@ -1,8 +1,8 @@
 ---
 # TODO there must be a better way to terminate instances. This way requires to ssh into instance before terminating it, which should not be necessary.
 #
-- name: Gather EC2 facts
-  local_action: ec2_facts
+#- name: Gather EC2 facts
+#  local_action: ec2_facts
  
 - name: Terminate instances 
   local_action: ec2
