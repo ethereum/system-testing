@@ -1,5 +1,7 @@
 system-testing.pem
+ping.yml
 testing.yml
 venv/
+*.pyc
 *.swp
 *~

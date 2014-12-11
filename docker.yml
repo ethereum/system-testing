@@ -2,7 +2,7 @@
 
 - name: Start ethereum docker clients
   hosts: security_group_system-testing # this is provided by ec2.py
-  remote_user: ubuntu # provide the priviate key via cmdline: --private-key=system-testing.pem
+  remote_user: ubuntu 
   sudo: yes
   gather_facts: false
   roles:
