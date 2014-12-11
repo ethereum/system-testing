@@ -61,8 +61,14 @@ class Event(object):
     def dict(self):
         return {self.name:self.kargs}
 
-# used for bad none json logs
+# used by teees.py to wrap and annotate bad none json logs
 Event('notjson', logging_error='', log_line='')
+
+
+
+##########################################################
+# Events that clients should log
+##########################################################
 
 # Startup
 Event('starting', eth_version=0, version='', coinbase=address)
@@ -77,11 +83,14 @@ P2PEvent('p2p.connected')
 P2PEvent('p2p.handshaked', remote_capabilities=[])
 P2PEvent('p2p.disconnected')
 P2PEvent('p2p.disconnecting', reason='')
+# more precise reasons
 P2PEvent('p2p.disconnecting.bad_handshake', reason='')
 P2PEvent('p2p.disconnecting.bad_block', reason='')
 P2PEvent('p2p.disconnecting.bad_tx', reason='')
 P2PEvent('p2p.disconnecting.bad_protocol', reason='')
+# e.g. if a peer doesn't deliver (txs, blks, ...) as expected
 P2PEvent('p2p.disconnecting.reputation', reason='')
+# e.g. if there where better connection options found
 P2PEvent('p2p.disconnecting.dht', reason='')
 
 # Blocks
@@ -96,8 +105,14 @@ BlockEvent('newblock.is_known')
 BlockEvent('newblock.is_new')
 BlockEvent('newblock.missing_parent')
 BlockEvent('newblock.is_invalid', reason='')
+# previously unknown block w/ block.number < head.number
 BlockEvent('newblock.chain.is_older')
-BlockEvent('newblock.chain.is_current')
+# block which appends to the chain w/ highest difficulty (after appending)
+BlockEvent('newblock.chain.is_cannonical')
+# block which appends to a chain which has not the highest difficulty
+BlockEvent('newblock.chain.not_cannonical')
+# if the block makes adds to a differnt chain which then has the highest total difficult.
+# i.e. block.prev != head.prev != head
 BlockEvent('newblock.chain.switched', old_head=hexhash)
 
 # Transactions
@@ -105,12 +120,19 @@ class TXEvent(Event):
     defaults = dict(tx_hash=hexhash, sender=address, address=address, nonce=0)
     defaults.update(Event.defaults)
 
+
+# scope of tx events is only for those received over the wire
+# not those included in blocks (discuss!)
 TXEvent('tx.created', hexrlp=hexrlp)
 TXEvent('tx.received')
 TXEvent('tx.broadcasted')
 TXEvent('tx.validated')
 TXEvent('tx.is_invalid', reason='')
 
+
+
+
+#########################################
 
 import json
 from collections import OrderedDict
