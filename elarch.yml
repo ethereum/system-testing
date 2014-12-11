@@ -1,0 +1,13 @@
+---
+- name: Start elastic search node 
+  hosts: tag_Name_elarch 
+  remote_user: ubuntu # key is defined in ansible.cfg 
+  sudo: yes
+  gather_facts: false
+  roles:
+      - common
+
+  tasks:
+  # TODO is should be possible to include this without the full path, but it isn't
+      - include: roles/common/tasks/docker-ansible.yml
+      - include: roles/common/tasks/elarch.yml

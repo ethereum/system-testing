@@ -1,0 +1,5 @@
+---
+- name: Start elastic search + kibana in docker 
+  docker: 
+      image: minimum2scp/es-kibana 
+      ports: ["80:80", "9200:9200"] 
