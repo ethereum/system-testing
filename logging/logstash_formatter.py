@@ -42,8 +42,8 @@ class LogstashFormatter(object):
         """
         Format a log record to JSON
         """
-        assert 'msg' in fields
-        msg = fields.pop('msg')
+        assert 'event' in fields
+        msg = fields.pop('event')
 
         logr = self.defaults.copy()
 
