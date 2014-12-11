@@ -37,6 +37,7 @@ Testing mode which reads logs of a client and checks
 """
 
 address = 'hex40'
+hexid = 'hex128'
 endpoint = 'host:port'
 hexhash = 'hex64'
 hexrlp = 'hexN'
@@ -49,7 +50,7 @@ class Event(object):
         inherit to set repeating key/value information requirements
     """
     events = []
-    defaults = {'node_id': address}
+    defaults = {'node_id': hexid}
 
     def __init__(self, name, **kargs):
         self.name = name
@@ -85,7 +86,7 @@ P2PEvent('p2p.disconnecting.dht', reason='')
 
 # Blocks
 class BlockEvent(Event):
-    defaults = dict(head=hexhash, block_hash=hexhash, prev_hash=hexhash, number=0, difficutly=0)
+    defaults = dict(head=hexhash, block_hash=hexhash, prev_hash=hexhash, number=0, difficulty=0)
     defaults.update(Event.defaults)
 
 BlockEvent('newblock.received')
@@ -128,5 +129,5 @@ def event_name_map():
 
 if __name__ == '__main__':
     print json.dumps(events(), indent=4)
-    print json.dumps(event_name_map(), indent=4)
+    #print json.dumps(event_name_map(), indent=4)
 
