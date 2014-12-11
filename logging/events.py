@@ -29,6 +29,14 @@ Expected log records are json dicts which map
 message_name : dict(of key value pairs)
 Example: {'message_name': {eth_version=0, version='py', coinbase='address'}}
 
+
+Questions:
+* Timestamps provided by client?
+* external nodeid prefix?
+* namespaces?
+* logs for syncing?
+
+
 ToDo:
 Testing mode which reads logs of a client and checks
     * if all required events where used
@@ -85,35 +93,37 @@ P2PEvent('p2p.disconnected')
 P2PEvent('p2p.disconnecting', reason='')
 # more precise reasons
 P2PEvent('p2p.disconnecting.bad_handshake', reason='')
-P2PEvent('p2p.disconnecting.bad_block', reason='')
-P2PEvent('p2p.disconnecting.bad_tx', reason='')
 P2PEvent('p2p.disconnecting.bad_protocol', reason='')
 # e.g. if a peer doesn't deliver (txs, blks, ...) as expected
 P2PEvent('p2p.disconnecting.reputation', reason='')
 # e.g. if there where better connection options found
 P2PEvent('p2p.disconnecting.dht', reason='')
+# if a peer sends rough info
+P2PEvent('p2p.eth.disconnecting.bad_block', reason='')
+P2PEvent('p2p.eth.disconnecting.bad_tx', reason='')
+
 
 # Blocks
 class BlockEvent(Event):
     defaults = dict(head=hexhash, block_hash=hexhash, prev_hash=hexhash, number=0, difficulty=0)
     defaults.update(Event.defaults)
 
-BlockEvent('newblock.received')
-BlockEvent('newblock.mined', hexrlp=hexrlp)
-BlockEvent('newblock.broadcasted')
-BlockEvent('newblock.is_known')
-BlockEvent('newblock.is_new')
-BlockEvent('newblock.missing_parent')
-BlockEvent('newblock.is_invalid', reason='')
+BlockEvent('eth.newblock.received')
+BlockEvent('eth.newblock.mined', hexrlp=hexrlp)
+BlockEvent('eth.newblock.broadcasted')
+BlockEvent('eth.newblock.is_known')
+BlockEvent('eth.newblock.is_new')
+BlockEvent('eth.newblock.missing_parent')
+BlockEvent('eth.newblock.is_invalid', reason='')
 # previously unknown block w/ block.number < head.number
-BlockEvent('newblock.chain.is_older')
+BlockEvent('eth.newblock.chain.is_older')
 # block which appends to the chain w/ highest difficulty (after appending)
-BlockEvent('newblock.chain.is_cannonical')
+BlockEvent('eth.newblock.chain.is_cannonical')
 # block which appends to a chain which has not the highest difficulty
-BlockEvent('newblock.chain.not_cannonical')
+BlockEvent('eth.newblock.chain.not_cannonical')
 # if the block makes adds to a differnt chain which then has the highest total difficult.
 # i.e. block.prev != head.prev != head
-BlockEvent('newblock.chain.switched', old_head=hexhash)
+BlockEvent('eth.newblock.chain.switched', old_head=hexhash)
 
 # Transactions
 class TXEvent(Event):
@@ -123,11 +133,11 @@ class TXEvent(Event):
 
 # scope of tx events is only for those received over the wire
 # not those included in blocks (discuss!)
-TXEvent('tx.created', hexrlp=hexrlp)
-TXEvent('tx.received')
-TXEvent('tx.broadcasted')
-TXEvent('tx.validated')
-TXEvent('tx.is_invalid', reason='')
+TXEvent('eth.tx.created', hexrlp=hexrlp)
+TXEvent('eth.tx.received')
+TXEvent('eth.tx.broadcasted')
+TXEvent('eth.tx.validated')
+TXEvent('eth.tx.is_invalid', reason='')
 
 
 
