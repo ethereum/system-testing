@@ -73,10 +73,6 @@ class Event(object):
     def dict(self):
         return {self.name:self.kargs}
 
-# used by teees.py to wrap and annotate bad none json logs
-Event('notjson', logging_error='', log_line='')
-
-
 
 ##########################################################
 # Events that clients should log
@@ -152,7 +148,8 @@ TXEvent('eth.tx.validated')
 TXEvent('eth.tx.is_invalid', reason='')
 
 
-
+# used by teees.py to wrap and annotate bad none json logs
+Event('notjson', logging_error='', log_line='', comment='not to be implemented by clients')
 
 #########################################
 
