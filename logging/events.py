@@ -23,18 +23,20 @@ The log database can not efficiently do joins.
 Therefore logs need to provide as much context as is needed to make sense.
 i.e. log data is denormalized
 
+Recommended Reading - Logging Best Practices:
+https://docs.google.com/a/ethdev.com/document/d/1oeW_l_YgQbR-C_7R2cKl6eYBT5N4WSMbvz0AT6hYDvA/edit?pli=1
+
+
 Log Format:
 
 Expected log records are json dicts which map
 message_name : dict(of key value pairs)
-Example: {'message_name': {eth_version=0, version='py', coinbase='address'}}
+Example: {'message_name': {eth_version=0, version_string='py', coinbase='address'}}
 
 
 Questions:
-* Timestamps provided by client?
-* external nodeid prefix?
 * namespaces?
-* logs for syncing?
+* should we log the chain syncing?
 
 
 ToDo:
@@ -45,10 +47,12 @@ Testing mode which reads logs of a client and checks
 """
 
 address = 'hex40'
-hexid = 'hex128'
+guid = 'hex128'
 endpoint = 'host:port'
 hexhash = 'hex64'
 hexrlp = 'hexN'
+timestamp = 'YYYY-MM-DDTHH:MM:SS.SSSSSSZ'
+level = 'debug'
 
 class Event(object):
     """
@@ -58,7 +62,7 @@ class Event(object):
         inherit to set repeating key/value information requirements
     """
     events = []
-    defaults = {'node_id': hexid}
+    defaults = dict(guid=guid, ts=timestamp, level=level)
 
     def __init__(self, name, **kargs):
         self.name = name
@@ -79,14 +83,14 @@ Event('notjson', logging_error='', log_line='')
 ##########################################################
 
 # Startup
-Event('starting', eth_version=0, version='', coinbase=address)
+Event('starting', eth_version=0, version_string='', coinbase=address)
 
 # P2P
 class P2PEvent(Event):
-    defaults = dict(remote_nodeid=address, num_connections=0)
+    defaults = dict(remote_id=guid, num_connections=0)
     defaults.update(Event.defaults)
 
-P2PEvent('p2p.connecting', endpoint=endpoint)
+P2PEvent('p2p.connecting', remote_endpoint=endpoint)
 P2PEvent('p2p.connected')
 P2PEvent('p2p.handshaked', remote_capabilities=[])
 P2PEvent('p2p.disconnected')
@@ -105,36 +109,44 @@ P2PEvent('p2p.eth.disconnecting.bad_tx', reason='')
 
 # Blocks
 class BlockEvent(Event):
-    defaults = dict(head=hexhash, block_hash=hexhash, prev_hash=hexhash, number=0, difficulty=0)
+    defaults = dict(head_hash=hexhash, block_hash=hexhash, block_prev_hash=hexhash, block_number=0, block_difficulty=0)
     defaults.update(Event.defaults)
 
-BlockEvent('eth.newblock.received')
-BlockEvent('eth.newblock.mined', hexrlp=hexrlp)
+# created blocks
+BlockEvent('eth.newblock.mined', block_hexrlp=hexrlp)
 BlockEvent('eth.newblock.broadcasted')
-BlockEvent('eth.newblock.is_known')
-BlockEvent('eth.newblock.is_new')
-BlockEvent('eth.newblock.missing_parent')
-BlockEvent('eth.newblock.is_invalid', reason='')
+
+class ReceivedBlockEvent(BlockEvent):
+    defaults = dict(remote_id=guid)
+    defaults.update(BlockEvent.defaults)
+
+# received blocks
+ReceivedBlockEvent('eth.newblock.received')
+ReceivedBlockEvent('eth.newblock.is_known')
+ReceivedBlockEvent('eth.newblock.is_new')
+ReceivedBlockEvent('eth.newblock.missing_parent')
+ReceivedBlockEvent('eth.newblock.is_invalid', reason='')
 # previously unknown block w/ block.number < head.number
-BlockEvent('eth.newblock.chain.is_older')
+ReceivedBlockEvent('eth.newblock.chain.is_older')
 # block which appends to the chain w/ highest difficulty (after appending)
-BlockEvent('eth.newblock.chain.is_cannonical')
+ReceivedBlockEvent('eth.newblock.chain.is_cannonical')
 # block which appends to a chain which has not the highest difficulty
-BlockEvent('eth.newblock.chain.not_cannonical')
+ReceivedBlockEvent('eth.newblock.chain.not_cannonical')
 # if the block makes adds to a differnt chain which then has the highest total difficult.
 # i.e. block.prev != head.prev != head
-BlockEvent('eth.newblock.chain.switched', old_head=hexhash)
+ReceivedBlockEvent('eth.newblock.chain.switched', old_head_hash=hexhash)
+
 
 # Transactions
 class TXEvent(Event):
-    defaults = dict(tx_hash=hexhash, sender=address, address=address, nonce=0)
+    defaults = dict(tx_hash=hexhash, tx_sender=address, tx_address=address, tx_nonce=0)
     defaults.update(Event.defaults)
 
 
 # scope of tx events is only for those received over the wire
 # not those included in blocks (discuss!)
-TXEvent('eth.tx.created', hexrlp=hexrlp)
-TXEvent('eth.tx.received')
+TXEvent('eth.tx.created', tx_hexrlp=hexrlp)
+TXEvent('eth.tx.received', remote_id=guid)
 TXEvent('eth.tx.broadcasted')
 TXEvent('eth.tx.validated')
 TXEvent('eth.tx.is_invalid', reason='')
