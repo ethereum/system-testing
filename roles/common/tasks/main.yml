@@ -1,6 +1,8 @@
 ---
 - name: Install python and pip
+  sudo: true
   apt: name=python-pip
 
 - name: Install docker python module
+  sudo: true
   pip: name=docker-py

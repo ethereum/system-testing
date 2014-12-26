@@ -1,11 +1,9 @@
 ---
-
 - name: Provision EC2 nodes
   hosts: localhost
   gather_facts: false
   roles:
-      - common
+      - aws
 
   tasks:
-      # TODO is should be possible to include this without the full path, but it isn't
-      - include: roles/common/tasks/startup_ec2.yml
+      - include: roles/aws/tasks/startup_ec2.yml

@@ -1,0 +1,18 @@
+---
+- name: download latest client via docker
+  sudo: true
+  docker:
+      image: sveneh/pyethereum-develop
+      state: stopped
+
+- name: checkout git system-testing repo
+  git:
+      repo: https://github.com/ethereum/system-testing.git
+      dest: "{{ repo_path }}"
+        
+- name: install logging framework dependencies
+  sudo: true
+  pip:
+    name: elasticsearch
+    version: 0.4.5 
+

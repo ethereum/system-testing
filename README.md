@@ -1,7 +1,9 @@
 system-testing
 ==============
 
-planning is done in the [wiki](https://github.com/ethereum/system-testing/wiki)
+testing ethereum clients in dedicated networks
+
+[more info in the wiki](https://github.com/ethereum/system-testing/wiki)
 
 
 #Installing necessary software
@@ -20,3 +22,5 @@ pip install -r requirements.txt
 
 ```
 AWS credentials are stored in ~/.boto
+
+Useage: [wiki](https://github.com/ethereum/system-testing/wiki/How-to-run-a-test)

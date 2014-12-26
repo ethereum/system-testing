@@ -1,12 +1,10 @@
 ---
-
 - name: Terminate all ec2 instances 
   hosts: security_group_system-testing # this is provided by ec2.py
-  remote_user: ubuntu # provide the priviate key via cmdline: --private-key=system-testing.pem
+  remote_user: ubuntu # private key defined via ansible.cfg 
   gather_facts: false
   roles:
-      - common
+      - aws
 
   tasks:
-      # TODO is should be possible to include this without the full path, but it isn't
-      - include: roles/common/tasks/terminate_ec2.yml
+      - include: roles/aws/tasks/terminate_ec2.yml
