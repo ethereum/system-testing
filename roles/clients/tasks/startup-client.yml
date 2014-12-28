@@ -1,0 +1,16 @@
+---
+- name: Start ethereum docker client 
+  docker: image=sveneh/pyethereum-develop command="-C config.cfg" ports=30303:30303 
+
+- name: Get the docker container id
+  # ansible docker module does not support this, therefore shell
+  shell: docker ps --latest=true --quiet=true 
+  register: docker_id
+
+- name: Log docker output to file
+  # fire and forget, don't wait to finish, run for one day
+  async: 86400
+  poll: 0
+  # again, ansible docker module does not support logs
+  # pyethereum wrongly logs to stderr
+  shell: docker logs --follow=true {{ docker_id.stdout }} > home/ubuntu/out 2>&1

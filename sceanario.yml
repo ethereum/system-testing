@@ -1,0 +1,7 @@
+---
+- name: Minining scenario 
+  hosts: tag_Name_pythereum
+  remote_user: ubuntu
+  gather_facts: false
+  tasks:
+      - include: roles/clients/tasks/startup-client.yml

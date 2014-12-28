@@ -1,3 +1,0 @@
----
-- name: Start ethereum docker client 
-  docker: image=sveneh/pyethereum-develop command="-C config.cfg" ports=30303:30303 

@@ -6,3 +6,8 @@
 - name: Install docker python module
   sudo: true
   pip: name=docker-py
+
+- name: enable docker for standard user
+  sudo: true
+  # todo: how to logout after this command, otherwise won't be effective in this play
+  user: name=ubuntu groups=docker append=yes
