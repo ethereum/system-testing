@@ -6,3 +6,6 @@
   roles:
       - common
       - clients
+
+  tasks:
+      - include: roles/clients/tasks/setup.yml

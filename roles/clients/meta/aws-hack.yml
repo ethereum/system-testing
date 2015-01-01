@@ -1,0 +1,5 @@
+- name: AWS hack
+  hosts: tag_Name_elarch
+  remote_user: ubuntu
+  tasks:
+     - action: ec2_facts

@@ -1,7 +1,17 @@
 ---
+# aws hack, pt 1 
+- include: roles/clients/meta/aws-hack.yml
+
 - name: Minining scenario 
   hosts: tag_Name_pythereum
   remote_user: ubuntu
   gather_facts: false
+  roles:
+      - clients
+  
+  # aws hack, pt 2  
+  vars: 
+    elarch_ip: "{{ hostvars[groups['tag_Name_elarch'][0]]['ansible_ec2_public_ipv4'] }}"
+  
   tasks:
       - include: roles/clients/tasks/startup-client.yml
