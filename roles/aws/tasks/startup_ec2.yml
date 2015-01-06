@@ -1,4 +1,19 @@
 ---
+- name: start ec2 instance for bootstrapping node
+  ec2:  
+    group: ["{{ security_group }}"]
+    instance_type: "{{ instance_type }}" 
+    image: "{{ image }}" 
+    wait: true 
+    region: "{{ region }}"
+    key_name: "{{ keypair }}"
+    instance_tags:
+        Name: boot
+    count_tag: 
+        Name: boot 
+    exact_count: 1
+    user_data: "#include https://get.docker.com"
+
 - name: start new ec2 instances for clients
   ec2:  
     group: "{{ security_group }}"
