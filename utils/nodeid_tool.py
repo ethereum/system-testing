@@ -1,22 +1,44 @@
 #!/usr/bin/env python
 import sys
 from docopt import docopt
-from pyethereum import utils
+from sha3 import sha3_256
+from bitcoin import privtopub, encode_pubkey
 
-def sha3(x):
-    return utils.sha3(x).encode('hex')
+"""
+external_id:  e.g. 'honest1, honest2, ...'
+private_key:  hex(sha3(external_id))
 
-topriv = sha3
+private_key: is used to derive pubkey, address, etc.
+"""
 
-def privtoaddr(x):
-    x = topriv(x)
-    if len(x) == 64:
-        x = x.decode('hex')
-    return utils.privtoaddr(x)
+def sha3(seed):
+    return sha3_256(seed).digest()
 
-def privtonodeid(x):
-    return topriv(x)
+# all results are hex encoded
 
+def sha3_hex(seed):
+    return sha3(seed).encode('hex')
+
+topriv = sha3_hex
+
+def _privtopub(privkey):
+    r = encode_pubkey(privtopub(privkey), 'bin_electrum')
+    assert len(r) == 64
+    return r
+
+def topub(extid):
+    r = _privtopub(topriv(extid)).encode('hex')
+    assert len(r) == 128
+    return r
+
+tonodeid = topub
+
+def toaddr(extid):
+    r = sha3(_privtopub(topriv(extid)))[-20:].encode('hex')
+    assert len(r) == 40
+    return r
+
+coinbase = toaddr
 
 doc = \
     """nodeid_tool.py
@@ -25,8 +47,11 @@ Helper to deterministically generate
 privkey, nodeid, address, coinbase
 based on an external identifier.
 
-nodeid == privkey == sha3(external_id) (hex encoded)
-address == coinbase
+privkey == sha3(extid)
+nodeid == pubkey
+address == coinbase == sha3(pubkey)[-20:]
+
+all hex encoded
 
 can be used with other command line tools, e.g.:
 echo 'node-31' | ./nodeid_tool.py -s nodeid
@@ -35,6 +60,7 @@ echo 'node-31' | ./nodeid_tool.py -s nodeid
 Usage:
   pyethclient sha3 <data>
   pyethclient privkey <extid>
+  pyethclient pubkey  <extid>
   pyethclient nodeid  <extid>
   pyethclient address <extid>
   pyethclient coinbase <extid>
@@ -53,11 +79,12 @@ def main():
     # Get command line arguments
     arguments = docopt(doc, version='nodeid_tool 0.0.1')
 
-    cmd_map = dict(sha3=(sha3, arguments['<data>']),
+    cmd_map = dict(sha3=(sha3_hex, arguments['<data>']),
                    privkey=(topriv, arguments['<extid>']),
-                   nodeid=(privtonodeid, arguments['<extid>']),
-                   address=(privtoaddr, arguments['<extid>']),
-                   coinbase=(privtoaddr, arguments['<extid>']),
+                   pubkey=(topub, arguments['<extid>']),
+                   nodeid=(tonodeid, arguments['<extid>']),
+                   address=(toaddr, arguments['<extid>']),
+                   coinbase=(toaddr, arguments['<extid>']),
 
                    )
     for k in cmd_map:
