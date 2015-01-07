@@ -9,10 +9,15 @@
     key_name: "{{ keypair }}"
     instance_tags:
         Name: boot
+        Role: bootstrap
     count_tag: 
         Name: boot 
     exact_count: 1
     user_data: "#include https://get.docker.com"
+#  register: ec2
+
+#  checking for ssh not working yet
+# - include: add_host.yml
 
 - name: start new ec2 instances for clients
   ec2:  
@@ -23,11 +28,14 @@
     region: "{{ region }}"
     key_name: "{{ keypair }}"
     instance_tags:
-        Name: pythereum
-    count_tag: 
-        Name: pythereum
-    exact_count: 2
+        Name: "{{ item }}"
+        Role: client
+        Impl: python
+    count_tag: # exactly one instance with the given name
+        Name: "{{ item }}"
+    exact_count: 1
     user_data: "#include https://get.docker.com"
+  with_sequence: start=1 end={{ total_no_clients }} format=client-%02x
 
 
 - name: start ec2 instance for elasticsearch node
@@ -40,6 +48,7 @@
     key_name: "{{ keypair }}"
     instance_tags:
         Name: elarch
+        Role: logserver
     count_tag: 
         Name: elarch 
     exact_count: 1

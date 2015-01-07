@@ -5,3 +5,5 @@ venv/
 *.pyc
 *.swp
 *~
+roles/aws/tasks/add_host.yml
+roles/aws/tasks/check_ssh.yml

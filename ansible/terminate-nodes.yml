@@ -1,6 +1,6 @@
 ---
-- name: Terminate nodes only
-  hosts: tag_Name_pythereum  # this is provided by ec2.py
+- name: Terminate all clients except the log server
+  hosts: security_group_system-testing:!tag_Name_elarch # this is provided by ec2.py
   remote_user: ubuntu # private key defined via ansible.cfg 
   gather_facts: false
   roles:
