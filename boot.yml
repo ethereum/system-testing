@@ -1,0 +1,8 @@
+---
+- name: Start bootstrapping node
+  hosts: tag_Name_boot
+  remote_user: ubuntu # key is defined in ansible.cfg 
+  gather_facts: false
+  roles:
+      - common
+      - boot

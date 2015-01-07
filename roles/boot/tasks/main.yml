@@ -1,0 +1,8 @@
+---
+- name: Start bootstrapping node (cpp client)
+  sudo: yes
+  docker: 
+      image:    sveneh/cpp-ethereum
+      expose:   30303
+      ports:    30303:30303
+      command:  --client-name bootstrap --mining off

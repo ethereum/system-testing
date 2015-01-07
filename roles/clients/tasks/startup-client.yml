@@ -1,15 +1,16 @@
 ---
 - name: Start ethereum python client 
   docker: 
-      image: sveneh/pyethereum-develop 
-      ports: 30303:30303
+      image:    sveneh/pyethereum-develop 
+      expose:   30303
+      ports:    30303:30303
       
       # parameters given to client 
-      command: --logging :debug --log_json 1 --remote {{ bootstrap_ip }} --mining {{ mining_cpu_percentage }} --peers {{ req_num_peers }}
+      command: --logging :debug --log_json 1 --remote {{ bootstrap_ip }} --port 30303 --mining {{ mining_cpu_percentage }} --peers {{ req_num_peers }}
 
 - name: Get the docker container id
   # ansible docker module does not support this, therefore shell
-  shell: docker ps --latest=true --quiet=true 
+  shell:    docker ps --latest=true --quiet=true 
   register: docker_id
 
 - name: Log docker output to elarch

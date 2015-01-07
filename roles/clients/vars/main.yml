@@ -3,6 +3,5 @@ repo_path: /home/ubuntu/git
 
 # client configuration details
 
-bootstrap_ip:  207.12.89.180
 req_num_peers: 3
 mining_cpu_percentage: 10

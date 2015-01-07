@@ -1,0 +1,10 @@
+---
+- name: Terminate nodes only
+  hosts: tag_Name_pythereum  # this is provided by ec2.py
+  remote_user: ubuntu # private key defined via ansible.cfg 
+  gather_facts: false
+  roles:
+      - aws
+
+  tasks:
+      - include: roles/aws/tasks/terminate_ec2.yml
