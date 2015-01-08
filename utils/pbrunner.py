@@ -50,7 +50,7 @@ def run_playbook(playbook):
     su_pass = None
     vault_pass = None
 
-    inventory = ansible.inventory.Inventory(host_list='/etc/ansible/hosts',
+    inventory = ansible.inventory.Inventory(host_list='inventory',
                                             vault_password=vault_pass)
 
     if len(inventory.list_hosts()) == 0:
