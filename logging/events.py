@@ -125,9 +125,9 @@ ReceivedBlockEvent('eth.newblock.is_invalid', reason='')
 # previously unknown block w/ block.number < head.number
 ReceivedBlockEvent('eth.newblock.chain.is_older')
 # block which appends to the chain w/ highest difficulty (after appending)
-ReceivedBlockEvent('eth.newblock.chain.is_cannonical')
+ReceivedBlockEvent('eth.newblock.chain.is_canonical')
 # block which appends to a chain which has not the highest difficulty
-ReceivedBlockEvent('eth.newblock.chain.not_cannonical')
+ReceivedBlockEvent('eth.newblock.chain.not_canonical')
 # if the block makes adds to a differnt chain which then has the highest total difficult.
 # i.e. block.prev != head.prev != head
 ReceivedBlockEvent('eth.newblock.chain.switched', old_head_hash=hexhash)
