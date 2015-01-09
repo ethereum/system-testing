@@ -1,57 +1,48 @@
 #!/usr/bin/env python
 """
-Kibana:
-http://54.164.87.19/index.html#/dashboard/file/default.json
+1. start playbooks to setup environment
+    nodes
+    elasticsearch
+2. check prerequisites
+3. load cluster config with ips
+4. use rpc api / ansible to issue commands
+
+
 """
-from datetime.datetime import utcnow
 import json
 import elasticsearch
 from addict import Dict
+from collections import OrderedDict
+
+def ec2_mock():
+    "FIXME: mock until we have access"
+    ec2 = json.load(open('ec2.py.json'))
+    return ec2
 
 
-es_index_prefix = 'logstash-'
-es_index_name = 'logstash-%s' % utcnow().strftime('%Y.%m.%d')  # logstash-YYYY.MM.DD
-es_doc_type = 'ethlog'
+class Cluster(object):
+    def __init__(self):
+        self.instances = dict((k[len('tag_Name_'):],v[0])
+                          for k,v in ec2_mock().items()
+                           if k.startswith('tag_Name_'))
+        self.boot = self.instances.get('boot')
+        self.es = self.instances.get('elarch')
+        self.clients = OrderedDict(sorted((k, v) for k, v in
+                                   self.instances.items() if k.startswith('client-')))
+        self.roles = dict((k[len('tag_Role_'):],v)
+                          for k,v in ec2_mock().items()
+                           if k.startswith('tag_Role_'))
 
-# different config.json can be specified at the command line
-config = default_config = {
-    "index_prefix": es_index_prefix,       # logstash-YYYY.MM.DD
-    "doctype": es_doc_type,    # doctype of a classifed doc
-    "es_host": "localhost",
-    "es_port": 9200,
-}
-
-
-def pprint(data):
-    print json.dumps(data, indent=2)
-
-def search(es, index_name):
-    body = Dict()
-    body.query.has_parent.query.match_all
-    body.query.has_parent.type = config['eval_doctype']
-    # body.post_filter.term.evaluated = 'no'
-    # body._source = True
-    # body.fields = ['_parent']
-    # body.sort._parent.order = 'asc'
-
-    classifications = Dict(es.search(index_name, es_doc_type, body=body))
-
-    return classifications
-
-def main(config):
-    es = elasticsearch.Elasticsearch(host=config['es_host'], port=config['es_port'])
-    indices = [i for i in es.indices.status()['indices'].keys()
-                    if i.startswith(config['index_prefix'])]
-
-
-
-
-
-
+class Scenario(object):
+    def __init__(self):
+        pass
 
 
 if __name__ == '__main__':
-    import sys
-    if len(sys.argv) > 1:
-        config = json.loads(sys.argv[1])
-    main(config)
+    cluster = Cluster()
+    print cluster.boot
+    print cluster.es
+    print cluster.clients
+    print cluster.roles
+
+
