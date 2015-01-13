@@ -3,7 +3,7 @@
 - include: roles/clients/meta/aws-hack.yml
 
 - name: Minining scenario 
-  hosts: tag_Name_pythereum
+  hosts: tag_Role_client
   remote_user: ubuntu
   gather_facts: false
   roles:

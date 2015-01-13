@@ -3,8 +3,15 @@
 
 instance_type:      t2.micro
 security_group:     system-testing 
-image:              ami-9eaa1cf6 
-region:             us-east-1
+image:              ami-076e6542 
+# the same image in us-east-1 as above
+# image:              ami-9eaa1cf6 
+region:             us-west-1
+# region:             us-east-1
 keypair:            system-testing
+
+# limit access to AWS to these clients in CDIR notation
+ip_access_range:    0.0.0.0/0
+
 
 total_no_clients:   5

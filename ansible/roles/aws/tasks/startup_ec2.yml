@@ -1,7 +1,50 @@
 ---
+- name: create default security group 
+  ec2_group:
+    name: "{{ security_group }}"
+    region: "{{ region }}"
+    description: https://github.com/ethereum/system-testing/wiki
+    rules:
+        # ssh
+      - proto: tcp
+        from_port: 22
+        to_port: 22
+        cidr_ip: "{{ ip_access_range }}"
+        # ethereum incoming connection port
+      - proto: tcp
+        from_port: 30303
+        to_port: 30303
+        cidr_ip: "{{ ip_access_range }}"
+    rules_egress:
+      - proto: all
+        cidr_ip: "{{ ip_access_range }}"
+
+- name: create security group for elastic search logger
+  ec2_group:
+    name: elarch
+    region: "{{ region }}"
+    description: https://github.com/ethereum/system-testing/wiki
+    rules:
+        # ssh
+      - proto: tcp
+        from_port: 22
+        to_port: 22
+        cidr_ip: "{{ ip_access_range }}"
+        # http 
+      - proto: tcp
+        from_port: 80
+        to_port: 80
+        cidr_ip: "{{ ip_access_range }}"
+        # incoming log events
+      - proto: tcp
+        from_port: 9200
+        to_port: 9200
+        cidr_ip: "{{ ip_access_range }}"
+
+
 - name: start ec2 instance for bootstrapping node
   ec2:  
-    group: ["{{ security_group }}"]
+    group: "{{ security_group }}"
     instance_type: "{{ instance_type }}" 
     image: "{{ image }}" 
     wait: true 
