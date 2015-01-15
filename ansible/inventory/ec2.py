@@ -157,16 +157,16 @@ class Ec2Inventory(object):
 
         # Data to print
         if self.args.host:
-            data_to_print = self.get_host_info()
+            self.data_to_print = self.get_host_info()
 
         elif self.args.list:
             # Display list of instances for inventory
             if self.inventory == self._empty_inventory():
-                data_to_print = self.get_inventory_from_cache()
+                self.data_to_print = self.get_inventory_from_cache()
             else:
-                data_to_print = self.json_format_dict(self.inventory, True)
+                self.data_to_print = self.json_format_dict(self.inventory, True)
 
-        print data_to_print
+
 
 
     def is_cache_valid(self):
@@ -432,7 +432,7 @@ class Ec2Inventory(object):
             self.push(self.inventory, key_name, dest)
             if self.nested_groups:
                 self.push_group(self.inventory, 'keys', key_name)
-        
+
         # Inventory: Group by security group
         try:
             for group in instance.groups:
@@ -504,13 +504,13 @@ class Ec2Inventory(object):
         self.push(self.inventory, instance.availability_zone, dest)
         if self.nested_groups:
             self.push_group(self.inventory, region, instance.availability_zone)
-        
+
         # Inventory: Group by instance type
         type_name = self.to_safe('type_' + instance.instance_class)
         self.push(self.inventory, type_name, dest)
         if self.nested_groups:
             self.push_group(self.inventory, 'types', type_name)
-        
+
         # Inventory: Group by security group
         try:
             if instance.security_group:
@@ -714,6 +714,9 @@ class Ec2Inventory(object):
             return json.dumps(data)
 
 
-# Run the script
-Ec2Inventory()
+def inventory():
+    # hack to load inventory as a module
+    return json.loads(Ec2Inventory().data_to_print)
 
+if __name__ == '__main__':
+    print Ec2Inventory().data_to_print
