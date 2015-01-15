@@ -9,28 +9,25 @@
 
 
 """
-import json
 import elasticsearch
+import ec2
 from addict import Dict
 from collections import OrderedDict
 
-def ec2_mock():
-    "FIXME: mock until we have access"
-    ec2 = json.load(open('ec2.py.json'))
-    return ec2
 
 
 class Cluster(object):
     def __init__(self):
+        inventory = ec2.inventory()
         self.instances = dict((k[len('tag_Name_'):],v[0])
-                          for k,v in ec2_mock().items()
+                          for k,v in inventory.items()
                            if k.startswith('tag_Name_'))
         self.boot = self.instances.get('boot')
         self.es = self.instances.get('elarch')
         self.clients = OrderedDict(sorted((k, v) for k, v in
                                    self.instances.items() if k.startswith('client-')))
         self.roles = dict((k[len('tag_Role_'):],v)
-                          for k,v in ec2_mock().items()
+                          for k,v in inventory.items()
                            if k.startswith('tag_Role_'))
 
 class Scenario(object):

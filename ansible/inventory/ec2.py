@@ -132,7 +132,8 @@ except ImportError:
 
 
 class Ec2Inventory(object):
-    def _empty_inventory(self):
+    @classmethod
+    def _empty_inventory(cls):
         return {"_meta" : {"hostvars" : {}}}
 
     def __init__(self):
@@ -166,7 +167,8 @@ class Ec2Inventory(object):
             else:
                 self.data_to_print = self.json_format_dict(self.inventory, True)
 
-
+    def is_empty(self):
+        return self.inventory == self._empty_inventory()
 
 
     def is_cache_valid(self):
@@ -719,4 +721,7 @@ def inventory():
     return json.loads(Ec2Inventory().data_to_print)
 
 if __name__ == '__main__':
-    print Ec2Inventory().data_to_print
+    inv = Ec2Inventory()
+    if inv.is_empty():
+        sys.exit(1)
+    print inv.data_to_print
