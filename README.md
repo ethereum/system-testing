@@ -8,9 +8,9 @@ testing ethereum clients in dedicated networks
 
 #Installing necessary software
 
-tests are deployed via Ansible on Amazon EC2 instances. 
+tests are deployed via Ansible on Amazon EC2 instances.
 
- 
+
 Current install on Ubuntu:
 ```
 sudo apt-get install python python-pip python-virtualenv
@@ -23,4 +23,4 @@ pip install -r requirements.txt
 ```
 AWS credentials are stored in ~/.boto
 
-Useage: [wiki](https://github.com/ethereum/system-testing/wiki/How-to-run-a-test)
+Usage: [wiki](https://github.com/ethereum/system-testing/wiki/How-to-run-a-test)

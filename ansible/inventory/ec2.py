@@ -722,6 +722,7 @@ def inventory():
 
 if __name__ == '__main__':
     inv = Ec2Inventory()
+    print inv.data_to_print
     if inv.is_empty():
         sys.exit(1)
-    print inv.data_to_print
+
