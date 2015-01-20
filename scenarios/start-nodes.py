@@ -11,9 +11,9 @@ import json
 inventory = Inventory()
 
 conf = dict(mining_cpu_percentage=50,
-            bootstrap_ip = inventory.boot,
+            bootstrap_ip=inventory.boot,
             port=30303,
-            req_num_peers = 4)
+            req_num_peers=4)
 
 docker_run_args = '--logging :debug --log_json 1 --remote {bootstrap_ip} --port 30303 ' \
                   '--mining {mining_cpu_percentage} --peers {req_num_peers}'
@@ -40,7 +40,22 @@ for client in inventory.clients:
 
 print json.dumps(inventory.inventory, indent=4)
 
+"""
+1) inventory schreiben
+2) ansible-pb -i invent client-run (clients starten)
+
+loop:
+  random wait
+  docker stop random client (ansible-playbook --extra-args pattern=tag_name
+  random wait
+  random start stoped client
+until tired
+
+start analytics
 
 
 
+
+
+"""
 
