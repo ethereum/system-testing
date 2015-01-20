@@ -1,0 +1,12 @@
+---
+- name: Stop a client 
+  # host_pattern to be defined on cmd_line like --extra-vars "host_pattern=tag_Role_client"
+  hosts: "{{ host_pattern }}" 
+  # hosts: "{{ host_pattern | default(tag_Name_client-01) }}" 
+  remote_user: ubuntu
+  gather_facts: false
+  roles:
+      - clients
+  
+  tasks:
+      - include: roles/clients/tasks/stop.yml

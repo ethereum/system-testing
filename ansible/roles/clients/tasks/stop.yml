@@ -1,0 +1,10 @@
+---
+- name: Stop client docker instances
+  docker:
+      # ansible docker does not support stop by container name, only by image name. Stupid.
+      image: "{{ docker_image_py }}" 
+      state: stopped
+
+- name: Persist state of stopped client
+  # ansible docker module does not support this ...
+  shell: docker commit {{ container_id }} {{ docker_image_py }}
