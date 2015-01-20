@@ -1,10 +1,18 @@
 ---
 - name: Stop client docker instances
-  docker:
-      # ansible docker does not support stop by container name, only by image name. Stupid.
-      image: "{{ docker_image_py }}" 
-      state: stopped
+  # ansible docker does not support stop by container name, only by image name. Stupid.
+  shell: docker stop {{ container_id }} 
 
 - name: Persist state of stopped client
   # ansible docker module does not support this ...
   shell: docker commit {{ container_id }} {{ docker_image_py }}
+
+
+- name: Stop docker log forwarding
+  # there is no Ansible API to stop async tasks, unfortunately.
+  shell: "{{ item }}"
+  with_items:
+      - pkill --full teees
+      - pkill --full "docker logs"
+  # pkill gives -15 return code, don't know why. Ignore it
+  failed_when: false 
