@@ -62,7 +62,7 @@
 #  checking for ssh not working yet
 # - include: add_host.yml
 
-- name: start new ec2 instances for clients
+- name: start new ec2 instances for client nodes
   ec2:  
     group: "{{ security_group }}"
     instance_type: "{{ instance_type }}" 
@@ -81,7 +81,7 @@
   with_sequence: start=1 end={{ total_no_clients }} format=client-%02x
 
 
-- name: start ec2 instance for elasticsearch node
+- name: start ec2 instance for elasticsearch server 
   ec2:  
     group: ["{{ security_group }}", elarch]
     instance_type: "{{ instance_type }}" 

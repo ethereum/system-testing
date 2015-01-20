@@ -2,7 +2,7 @@
 # aws hack, pt 1 
 - include: roles/clients/meta/aws-hack.yml
 
-- name: Minining scenario 
+- name: First time client init
   hosts: tag_Role_client
   remote_user: ubuntu
   gather_facts: false
@@ -15,4 +15,4 @@
     bootstrap_ip:   "{{ hostvars[groups['tag_Name_boot'][0]]['ansible_ec2_public_ipv4'] }}"
   
   tasks:
-      - include: roles/clients/tasks/startup-client.yml
+      - include: roles/clients/tasks/init.yml

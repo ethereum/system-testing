@@ -1,5 +1,7 @@
 ---
 repo_path: /home/ubuntu/git
+# name given to the docker container id in which the client runs
+container_id: container_id
 
 # client configuration details
 

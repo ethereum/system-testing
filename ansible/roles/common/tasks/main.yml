@@ -1,7 +1,10 @@
 ---
-- name: Install python and pip
+- name: Install python and pip, tools
   sudo: true
-  apt: name=python-pip
+  apt: name={{ item }} 
+  with_items:
+      - python-pip
+      - htop
 
 - name: Install docker python module
   sudo: true

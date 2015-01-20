@@ -1,17 +1,13 @@
 ---
-- name: Start ethereum python client 
+- name: initial start of ethereum python client, connection to bootstrapping node
   docker: 
       image:    sveneh/pyethereum-develop 
+      name:     "{{ container_id }}"     
       expose:   30303
       ports:    30303:30303
       
       # parameters given to client 
       command: --logging :debug --log_json 1 --remote {{ bootstrap_ip }} --port 30303 --mining {{ mining_cpu_percentage }} --peers {{ req_num_peers }}
-
-- name: Get the docker container id
-  # ansible docker module does not support this, therefore shell
-  shell:    docker ps --latest=true --quiet=true 
-  register: docker_id
 
 - name: Log docker output to elarch
   # fire and forget, don't wait to finish, run for one day
@@ -19,4 +15,4 @@
   poll: 0
   # again, ansible docker module does not support logs
   # pyethereum wrongly logs to stderr
-  shell: docker logs --follow=true {{ docker_id.stdout }} 2>&1 | {{ repo_path }}/logging/teees.py {{ elarch_ip }}
+  shell: docker logs --follow {{ container_id }} 2>&1 | {{ repo_path }}/logging/teees.py {{ elarch_ip }}
