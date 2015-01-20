@@ -1,0 +1,23 @@
+---
+- name: start client with parmeters from inventory file 
+  docker: 
+      image:    "{{ docker_image_py }}"
+      name:     "{{ container_id }}"     
+      expose:   30303
+      ports:    30303:30303
+      
+      # parameters fetched from inventory file
+      command: {{ docker_run_args }} 
+
+- name: Forward logfiles with parameters from inventory file
+  # fire and forget, don't wait to finish, run for one day
+  async: 86400
+  poll: 0
+  # again, ansible docker module does not support logs
+  # pyethereum wrongly logs to stderr
+  # parameters fetched from inventory file
+  shell: docker logs --follow=true {{ container_id }} 2>&1 | {{ repo_path }}/logging/teees.py {{ docker_tee_args }} 
+  register: log_runner
+
+- name: verify previous task
+  async_status: jid={{ log_runner.ansible_job_id }}
