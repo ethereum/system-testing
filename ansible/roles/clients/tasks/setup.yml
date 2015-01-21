@@ -2,7 +2,7 @@
 - name: download latest client via docker
   sudo: true
   # the official ansibe docker module does not have the option to just pull the image, it will also run it
-  shell: docker pull sveneh/pyethereum-develop
+  shell: docker pull {{ docker_image_py }} 
 
 - name: checkout git system-testing repo
   git:

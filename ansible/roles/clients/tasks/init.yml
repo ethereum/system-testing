@@ -1,7 +1,7 @@
 ---
 - name: initial start of ethereum python client, connection to bootstrapping node
   docker: 
-      image:    sveneh/pyethereum-develop 
+      image:    "{{ docker_image_py }}"
       name:     "{{ container_id }}"     
       expose:   30303
       ports:    30303:30303
@@ -15,4 +15,8 @@
   poll: 0
   # again, ansible docker module does not support logs
   # pyethereum wrongly logs to stderr
-  shell: docker logs --follow {{ container_id }} 2>&1 | {{ repo_path }}/logging/teees.py {{ elarch_ip }}
+  shell: docker logs --follow=true {{ container_id }} 2>&1 | {{ repo_path }}/logging/teees.py {{ elarch_ip }}
+  register: log_runner
+
+- name: verify previous task
+  async_status: jid={{ log_runner.ansible_job_id }}
