@@ -9,7 +9,6 @@ import nodeid_tool
 import json
 import subprocess
 import tempfile
-import sys
 import stat
 import os
 
@@ -38,8 +37,8 @@ def exec_start_clients(inventory):
     fn = inventory_executable(inventory)
     print 'inventory executable:', fn
     args = ['ansible-playbook', '../ansible/client-start.yml', '-i', fn] + ansible_args
+    #args += ['--extra-vars="hosts=tag_Role_client"']
     #args += ['--extra-vars="host_pattern=tag_Role_client"']
-    args += ['--extra-vars="host_pattern=tag_Name_client-02"']
     print 'executing', ' '.join(args)
     result = subprocess.call(args)
     if result:
@@ -54,6 +53,7 @@ def start_clients():
     """
     inventory = Inventory()
     #inventory.inventory['_meta']['host_pattern'] = 'tag_Role_client'
+    #inventory.inventory['host_pattern'] = 'tag_Role_client'
     for client in list(inventory.clients):
         assert client
         assert inventory.es
@@ -66,8 +66,9 @@ def start_clients():
                                      req_num_peers=req_num_peers)
         d['vars']['docker_run_args'] = dra
         d['vars']['docker_tee_args'] = teees_args.format(elarch_ip=inventory.es, pubkey_hex=pubkey)
-#        d['host_pattern'] = client
+        #d['host_pattern'] = client
         inventory.inventory[client] = d
+    print json.dumps(inventory.inventory, indent=2)
     exec_start_clients(inventory.inventory)
 
 
@@ -86,7 +87,7 @@ def stop_clients(host_pattern):
 
 
 if __name__ == '__main__':
-    stop_clients(host_pattern='tag_Role_client')
+    # stop_clients(host_pattern='tag_Role_client')
     start_clients()
 
 
