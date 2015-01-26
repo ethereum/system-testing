@@ -37,8 +37,15 @@ def exec_start_clients(inventory):
     fn = inventory_executable(inventory)
     print 'inventory executable:', fn
     args = ['ansible-playbook', '../ansible/client-start.yml', '-i', fn] + ansible_args
-    #args += ['--extra-vars="hosts=tag_Role_client"']
+    
+    # this will not work
     #args += ['--extra-vars="host_pattern=tag_Role_client"']
+    # this will
+    args += ['--extra-vars=host_pattern=tag_Role_client']
+
+    # the following is just to verify that the command is working. Comment it out when you actually want to start clients
+    args += ['--list-hosts']
+
     print 'executing', ' '.join(args)
     result = subprocess.call(args)
     if result:
