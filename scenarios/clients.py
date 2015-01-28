@@ -37,15 +37,7 @@ def exec_start_clients(inventory):
     fn = inventory_executable(inventory)
     print 'inventory executable:', fn
     args = ['ansible-playbook', '../ansible/client-start.yml', '-i', fn] + ansible_args
-    
-    # this will not work
-    #args += ['--extra-vars="host_pattern=tag_Role_client"']
-    # this will
     args += ['--extra-vars=host_pattern=tag_Role_client']
-
-    # the following is just to verify that the command is working. Comment it out when you actually want to start clients
-    args += ['--list-hosts']
-
     print 'executing', ' '.join(args)
     result = subprocess.call(args)
     if result:
@@ -54,17 +46,22 @@ def exec_start_clients(inventory):
         print 'success'
 
 
-def start_clients():
+def start_clients(clients=[]):
     """
     start all clients with a custom config (nodeid)
     """
+    assert isinstance(clients, list)
     inventory = Inventory()
-    #inventory.inventory['_meta']['host_pattern'] = 'tag_Role_client'
-    #inventory.inventory['host_pattern'] = 'tag_Role_client'
-    for client in list(inventory.clients):
+    if not clients:
+        clients = list(inventory.clients)
+    #hosts = [inventory.inventory[c][0] for c in clients]
+    hosts = clients
+    inventory.inventory['client_start_group'] = dict(children=hosts, hosts=[])
+    assert inventory.es
+    assert inventory.boot
+
+    for client in clients:
         assert client
-        assert inventory.es
-        assert inventory.boot
         ext_id = str(client)
         pubkey = nodeid_tool.topub(ext_id)
         d = dict(hosts=inventory.inventory[client], vars=dict())
@@ -73,7 +70,6 @@ def start_clients():
                                      req_num_peers=req_num_peers)
         d['vars']['docker_run_args'] = dra
         d['vars']['docker_tee_args'] = teees_args.format(elarch_ip=inventory.es, pubkey_hex=pubkey)
-        #d['host_pattern'] = client
         inventory.inventory[client] = d
     print json.dumps(inventory.inventory, indent=2)
     exec_start_clients(inventory.inventory)

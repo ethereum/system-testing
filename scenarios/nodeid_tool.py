@@ -11,20 +11,24 @@ private_key:  hex(sha3(external_id))
 private_key: is used to derive pubkey, address, etc.
 """
 
+
 def sha3(seed):
     return sha3_256(seed).digest()
 
 # all results are hex encoded
+
 
 def sha3_hex(seed):
     return sha3(seed).encode('hex')
 
 topriv = sha3_hex
 
+
 def _privtopub(privkey):
     r = encode_pubkey(privtopub(privkey), 'bin_electrum')
     assert len(r) == 64
     return r
+
 
 def topub(extid):
     r = _privtopub(topriv(extid)).encode('hex')
@@ -32,6 +36,7 @@ def topub(extid):
     return r
 
 tonodeid = topub
+
 
 def toaddr(extid):
     r = sha3(_privtopub(topriv(extid)))[-20:].encode('hex')

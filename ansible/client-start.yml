@@ -1,7 +1,8 @@
 ---
 - name: Starts a client with parameters supplied from inventory file
   # host_pattern to be defined on cmd_line like --extra-vars "host_pattern=tag_Role_client"
-  hosts: "{{ host_pattern | default('tag_Name_client-01') }}"
+  #hosts: "{{ host_pattern | default('tag_Name_client-01') }}"
+  hosts: client_start_group
   remote_user: ubuntu
   gather_facts: false
   roles:
