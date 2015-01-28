@@ -73,7 +73,7 @@ def stop_clients(clients=[]):
     inventory = Inventory()
     clients = clients or list(inventory.clients)
     inventory.inventory['client_stop_group'] = dict(children=clients, hosts=[])
-    exec_playbook(inventory.inventory, playbook='client-start.yml')
+    exec_playbook(inventory.inventory, playbook='client-stop.yml')
 
 
 if __name__ == '__main__':
