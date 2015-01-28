@@ -24,7 +24,7 @@ req_num_peers = 4
 ansible_args = ['-u', 'ubuntu', '--private-key=../ansible/system-testing.pem']
 
 
-def inventory_executable(inventory):
+def mk_inventory_executable(inventory):
     fn = tempfile.mktemp(suffix='json.sh', prefix='tmp_inventory', dir=None)
     fh = open(fn, 'w')
     fh.write("#!/bin/sh\necho '%s'" % json.dumps(inventory))
@@ -33,11 +33,9 @@ def inventory_executable(inventory):
     return fn
 
 
-def exec_start_clients(inventory):
-    fn = inventory_executable(inventory)
-    print 'inventory executable:', fn
-    args = ['ansible-playbook', '../ansible/client-start.yml', '-i', fn] + ansible_args
-    args += ['--extra-vars=host_pattern=tag_Role_client']
+def exec_playbook(inventory, playbook):
+    fn = mk_inventory_executable(inventory)
+    args = ['ansible-playbook', '../ansible/%s' % playbook, '-i', fn] + ansible_args
     print 'executing', ' '.join(args)
     result = subprocess.call(args)
     if result:
@@ -50,16 +48,11 @@ def start_clients(clients=[]):
     """
     start all clients with a custom config (nodeid)
     """
-    assert isinstance(clients, list)
     inventory = Inventory()
-    if not clients:
-        clients = list(inventory.clients)
-    #hosts = [inventory.inventory[c][0] for c in clients]
-    hosts = clients
-    inventory.inventory['client_start_group'] = dict(children=hosts, hosts=[])
+    clients = clients or list(inventory.clients)
+    inventory.inventory['client_start_group'] = dict(children=clients, hosts=[])
     assert inventory.es
     assert inventory.boot
-
     for client in clients:
         assert client
         ext_id = str(client)
@@ -71,46 +64,18 @@ def start_clients(clients=[]):
         d['vars']['docker_run_args'] = dra
         d['vars']['docker_tee_args'] = teees_args.format(elarch_ip=inventory.es, pubkey_hex=pubkey)
         inventory.inventory[client] = d
-    print json.dumps(inventory.inventory, indent=2)
-    exec_start_clients(inventory.inventory)
+#    print json.dumps(inventory.inventory, indent=2)
+    exec_playbook(inventory.inventory, playbook='client-start.yml')
 
 
-def stop_clients(host_pattern):
-    """
-    # host_pattern to be defined on cmd_line like --extra-vars "host_pattern=tag_Role_client"
-    """
-    args = ['ansible-playbook', '../ansible/client-stop.yml', '-i', 'ec2.py',
-            '--extra-vars',  '"host_pattern=%s"' % host_pattern] + ansible_args
-    print 'executing', ' '.join(args)
-    result = subprocess.call(args)
-    if result:
-        print 'failed'
-    else:
-        print 'success'
+def stop_clients(clients=[]):
+    # create group in inventory
+    inventory = Inventory()
+    clients = clients or list(inventory.clients)
+    inventory.inventory['client_stop_group'] = dict(children=clients, hosts=[])
+    exec_playbook(inventory.inventory, playbook='client-start.yml')
 
 
 if __name__ == '__main__':
-    # stop_clients(host_pattern='tag_Role_client')
-    start_clients()
-
-
-# print json.dumps(inventory.inventory, indent=4)
-
-"""
-1) inventory schreiben
-2) ansible-pb -i invent client-run (clients starten)
-
-loop:
-  random wait
-  docker stop random client (ansible-playbook --extra-args pattern=tag_name
-  random wait
-  random start stoped client
-until tired
-
-start analytics
-
-
-
-
-
-"""
+    stop_clients(clients=[])
+    start_clients(clients=[])
