@@ -3,8 +3,8 @@
   docker: 
       image:    "{{ docker_image_py }}"
       name:     "{{ container_id }}"     
-      expose:   30303
-      ports:    30303:30303
+      expose:   ["8080", "30303"]
+      ports:    ["8080:8080", "30303:30303"] 
       
       # parameters given to client 
       command: --logging :debug --log_json 1 --remote {{ bootstrap_ip }} --port 30303 --mining {{ mining_cpu_percentage }} --peers {{ req_num_peers }}

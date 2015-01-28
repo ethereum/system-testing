@@ -3,8 +3,8 @@
   docker: 
       image:    "{{ docker_image_py }}"
       name:     "{{ container_id }}"     
-      expose:   30303
-      ports:    30303:30303
+      expose:   ["8080", "30303"]
+      ports:    ["8080:8080", "30303:30303"] 
       
       # parameters fetched from inventory file
       command: "{{ docker_run_args }}"

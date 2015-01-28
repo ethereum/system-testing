@@ -10,6 +10,11 @@
         from_port: 22
         to_port: 22
         cidr_ip: "{{ ip_access_range }}"
+        # RPC control port
+      - proto: tcp
+        from_port: 8080
+        to_port: 8080
+        cidr_ip: "{{ ip_access_range }}"
         # ethereum incoming connection port
       - proto: tcp
         from_port: 30303
@@ -83,8 +88,8 @@
 
 - name: start ec2 instance for elasticsearch server 
   ec2:  
-    group: ["{{ security_group }}", elarch]
-    instance_type: "{{ instance_type }}" 
+    group: ["{{ security_group }}", elarch] 
+    instance_type: r3.xlarge # elarch needs a lot of RAM
     image: "{{ image }}" 
     wait: true 
     region: "{{ region }}"
