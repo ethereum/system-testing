@@ -11,7 +11,7 @@
 - name: Start bootstrapping node (python client)
   sudo: yes
   docker: 
-      image:    sveneh/pyethereum
+      image:    sveneh/pyethereum-develop
       expose:   30303
       ports:    30303:30303
       command:  --peers 0 --mining 0 
