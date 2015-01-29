@@ -3,6 +3,25 @@ random notes:
 ansible --overwrite
 http://docs.ansible.com/developing_inventory.html
 http://docs.ansible.com/playbooks_variables.html#passing-variables-on-the-command-line
+
+
+p2p_port
+rpc_port
+
+docker_run_args = '--logging :debug --log_json 1 --remote {bootstrap_ip} --port 30303 ' \
+                  '--mining {mining_cpu_percentage} --peers {req_num_peers}'
+teees_args = '{elarch_ip} guid,{pubkey_hex}'
+
+
+docker_run_args = []
+docker_run_args_1 = ''
+
+Vereinbarung mit Sven:
+Scenario Eins, dann N docker pro node
+
+p2p_port = 30000 + N
+rpc_port = 8000 + N
+
 """
 from base import Inventory
 import nodeid_tool
@@ -62,6 +81,7 @@ def start_clients(clients=[]):
                                      mining_cpu_percentage=mining_cpu_percentage,
                                      req_num_peers=req_num_peers)
         d['vars']['docker_run_args'] = dra
+        d['vars']['container_id'] = client
         d['vars']['docker_tee_args'] = teees_args.format(elarch_ip=inventory.es, pubkey_hex=pubkey)
         inventory.inventory[client] = d
 #    print json.dumps(inventory.inventory, indent=2)
