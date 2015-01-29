@@ -12,8 +12,8 @@
         cidr_ip: "{{ ip_access_range }}"
         # RPC control port
       - proto: tcp
-        from_port: 8080
-        to_port: 8080
+        from_port: 30203
+        to_port: 30203
         cidr_ip: "{{ ip_access_range }}"
         # ethereum incoming connection port
       - proto: tcp
