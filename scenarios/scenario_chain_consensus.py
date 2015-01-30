@@ -34,7 +34,7 @@ def scenario():
     waits a bit
     checks for consensus
 
-    @return: bool(consensus of all nodes)
+    @return: bool(consensous of all)
     """
     inventory = Inventory()
     clients = inventory.clients

@@ -20,7 +20,7 @@ import os
 key_file = '../ansible/system-testing.pem'
 
 docker_run_args = '--logging :debug --log_json 1 --remote {bootstrap_ip} --port 30303 ' \
-                  '--mining {mining_cpu_percentage} --peers {req_num_peers}'
+                  '--mining {mining_cpu_percentage} --peers {req_num_peers} --address {coinbase}'
 teees_args = '{elarch_ip} guid,{pubkey_hex}'
 
 mining_cpu_percentage = 50
@@ -62,10 +62,12 @@ def start_clients(clients=[]):
         assert client
         ext_id = str(client)
         pubkey = nodeid_tool.topub(ext_id)
+        coinbase = nodeid_tool.coinbase(ext_id)
         d = dict(hosts=inventory.inventory[client], vars=dict())
         dra = docker_run_args.format(bootstrap_ip=inventory.boot,
                                      mining_cpu_percentage=mining_cpu_percentage,
-                                     req_num_peers=req_num_peers)
+                                     req_num_peers=req_num_peers,
+                                     coinbase=coinbase)
         d['vars']['docker_run_args'] = dra
         d['vars']['container_id'] = client
         d['vars']['docker_tee_args'] = teees_args.format(elarch_ip=inventory.es, pubkey_hex=pubkey)

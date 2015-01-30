@@ -43,6 +43,14 @@ def consensus(offset=10):
     return max(tag.doc_count for tag in response.aggregations.by_block_hash.buckets)
 
 
+def consensus2():
+    """
+    measure block propagation time (including adding to the chain)
+        median
+        max
+    """
+
+
 def messages():
     s = Search(client)
     s = s.filter(time_range_filter(offset=6000))
@@ -75,7 +83,7 @@ def network():
         print hit
     return response
 
-#print consensus(20)
+# print consensus(20)
 
 """
 
