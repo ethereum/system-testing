@@ -4,6 +4,7 @@ from elasticsearch_dsl import Q as _Q
 from elasticsearch_dsl import F as _F
 import time
 import datetime
+from base import Inventory
 
 
 def at_kargs(kargs):
@@ -12,8 +13,8 @@ Q = lambda *args, **kargs: _Q(*args, **at_kargs(kargs))
 F = lambda *args, **kargs: _F(*args, **at_kargs(kargs))
 
 # from base import Inventory
-# es_endpoint = '%s:9200' % Inventory().es
-es_endpoint = '54.153.13.89:9200'  # FIXME speedup hack
+es_endpoint = '%s:9200' % Inventory().es
+# es_endpoint = '54.153.13.89:9200'  # FIXME speedup hack
 client = Elasticsearch(es_endpoint)
 
 
@@ -24,21 +25,22 @@ def time_range_filter(offset=60):
     return F('range', at_timestamp=dict(gte=start_time, lte=end_time))
 
 
-def consensus():
+def consensus(offset=10):
     """
-    the 'eth.chain.new_head' messages from the last minute should have
-    at least one hash common on all nodes.
+    check for 'eth.chain.new_head' messages
+    and return the max number of clients, that had the same head
+    during the last `offset` seconds.
 
-    i.e. check, that bucket_size == num_nodes
     """
     s = Search(client)
     s = s.query(Q("match", at_message='eth.chain.new_head'))
-    s = s.filter(time_range_filter(offset=10))
-    s.aggs.bucket('by_block_hash', 'terms', field='@fields.block_hash', size=100)
+    s = s.filter(time_range_filter(offset=offset))
+    # By default, the buckets are ordered by their doc_count descending
+    s.aggs.bucket('by_block_hash', 'terms', field='@fields.block_hash', size=10)
     s = s[10:10]
     response = s.execute()
-    for tag in response.aggregations.by_block_hash.buckets:
-        print(tag.key, tag.doc_count)
+    print response
+    return max(tag.doc_count for tag in response.aggregations.by_block_hash.buckets)
 
 
 def messages():
@@ -73,10 +75,7 @@ def network():
         print hit
     return response
 
-#response = network()
-#response = messages()
-response = consensus()
-
+#print consensus(20)
 
 """
 

@@ -4,24 +4,10 @@ ansible --overwrite
 http://docs.ansible.com/developing_inventory.html
 http://docs.ansible.com/playbooks_variables.html#passing-variables-on-the-command-line
 
-
-p2p_port
-rpc_port
-
-docker_run_args = '--logging :debug --log_json 1 --remote {bootstrap_ip} --port 30303 ' \
-                  '--mining {mining_cpu_percentage} --peers {req_num_peers}'
-teees_args = '{elarch_ip} guid,{pubkey_hex}'
-
-
 docker_run_args = []
-docker_run_args_1 = ''
-
-Vereinbarung mit Sven:
-Scenario Eins, dann N docker pro node
 
 p2p_port = 30000 + N
 rpc_port = 8000 + N
-
 """
 from base import Inventory
 import nodeid_tool
@@ -97,5 +83,10 @@ def stop_clients(clients=[]):
 
 
 if __name__ == '__main__':
-    stop_clients(clients=[])
-    start_clients(clients=[])
+    import sys
+    if 'start' in sys.argv:
+        start_clients()
+    elif 'stop' in sys.argv:
+        stop_clients()
+    else:
+        print 'usage:%s start|stop' % sys.argv[0]
