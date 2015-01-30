@@ -29,16 +29,17 @@ def scenario():
 
     # FIXME reset everything
 
-    # stop all clients
-    # stop_clients(clients=clients[1:])
-    # start_clients(clients=clients[:1])
+    if True:
+        # stop all clients
+        stop_clients(clients=clients[1:])
+        start_clients(clients=clients[:1])
 
-    # mine a bit
-    # blocktime = 12
-    # time.sleep(blocktime * len(clients) * 1.5)
+        # mine a bit
+        blocktime = 12
+        time.sleep(blocktime * len(clients) * 1.5)
 
-    # start other clients
-    # start_clients(clients=clients[1:])
+        # start other clients
+        start_clients(clients=clients[1:])
 
     # create tx
     sender = clients[0]
@@ -55,7 +56,6 @@ def scenario():
     rpc_port = str(30203)
     value = str(100)
 
-
     # dump account
     sending_address = '6c386a4b26f73c802f34673f7248bb118f97424a'
     print 'sending address', sending_address
@@ -65,7 +65,6 @@ def scenario():
     result = subprocess.call(args)
     if result:
         print 'failed'
-
 
     # pyethclient quicktx <to> <value> <data_hex> <pkey_hex>
 

@@ -86,9 +86,11 @@ def stop_clients(clients=[]):
 
 if __name__ == '__main__':
     import sys
-    if 'start' in sys.argv:
+    args = sys.argv[1:]
+    sys.argv = sys.argv[:1]  # ec2.py peeks into args, so delete passing-variables-on-the-command-line
+    if 'start' in args:
         start_clients()
-    elif 'stop' in sys.argv:
+    elif 'stop' in args:
         stop_clients()
     else:
         print 'usage:%s start|stop' % sys.argv[0]
