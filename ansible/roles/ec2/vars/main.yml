@@ -1,11 +1,11 @@
 ---
 # default config for ec2 instances
 
-instance_type:      t2.micro
-security_group:     system-testing 
-image:              ami-076e6542 
+instance_type:      t2.medium
+security_group:     system-testing
+image:              ami-076e6542
 # the same image in us-east-1 as above
-# image:              ami-9eaa1cf6 
+# image:              ami-9eaa1cf6
 region:             us-west-1
 # region:             us-east-1
 keypair:            system-testing
