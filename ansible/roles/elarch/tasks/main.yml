@@ -1,6 +1,37 @@
 ---
-- name: Start elastic search + kibana in docker 
+- name: Prepare building elasticsearch image
+  copy: src=../files/docker-elasticsearch dest=/tmp/docker-elasticsearch
+
+- name: Stop and remove elasticsearch instance/image
+  sudo: yes
+  shell: docker stop elasticsearch ; docker rm elasticsearch ; docker rmi local/elasticsearch:1.4.2
+  ignore_errors: true
+
+- name: Build elasticsearch image locally
+  shell: cd /tmp/docker-elasticsearch && docker build --rm -t local/elasticsearch:1.4.2
+
+- name: Deploy elasticsearch instance
   sudo: yes
   docker: 
-      image: minimum2scp/es-kibana 
-      ports: ["80:80", "9200:9200"] 
+      image: local/elasticsearch:1.4.2
+      name: elasticsearch
+      ports: "9200:9200"
+
+- name: Prepare building kibana4 image
+  copy: src=../files/docker-kibana4 dest=/tmp/docker-kibana4
+
+- name: Stop and remove elasticsearch instance/image
+  sudo: yes
+  shell: docker stop kibana4 ; docker rm kibana4 ; docker rmi local/kibana4:beta3
+  ignore_errors: true
+
+- name: Build kibana4 locally
+  sudo: yes
+  shell: cd /tmp/docker-kibana4 && docker build --rm -t local/kibana4:beta3
+
+- name: Deploy kibana4 instance
+  sudo: yes
+  docker: 
+      name: kibana4 
+      links: elasticsearch:elasticsearch
+      ports: ["80:5601"]
