@@ -3,7 +3,7 @@ ping.yml
 testing.yml
 venv/
 *.pyc
-*.swp
+*.sw?
 *~
 roles/aws/tasks/add_host.yml
 roles/aws/tasks/check_ssh.yml

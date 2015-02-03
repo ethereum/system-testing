@@ -10,4 +10,7 @@ RUN mv /data/kibana-4.0.0-beta3 /kibana
 # Add config file
 ADD config/kibana.yml /kibana/config/kibana.yml
 
+# http port for kibana, as defined in config file kibana.yml
+EXPOSE 5601
+
 ENTRYPOINT ["/kibana/bin/kibana"]
