@@ -2,7 +2,7 @@ import subprocess
 from base import Inventory
 import nodeid_tool
 from clients import start_clients, stop_clients
-from eshelper import consensus
+from eshelper import consensus, tx_propagation
 import random
 import time
 import sys
@@ -57,10 +57,10 @@ def scenario():
     value = str(100)
 
     # dump account
-    sending_address = '6c386a4b26f73c802f34673f7248bb118f97424a'
+    # sending_address = '6c386a4b26f73c802f34673f7248bb118f97424a'
     print 'sending address', sending_address
 
-    args = ['pyethclient', '-H', rpc_host, '-p', rpc_port, 'getstate', sending_address]
+    args = ['pyethclient', '-H', rpc_host, '-p', rpc_port, 'getbalance', sending_address]
     print 'executing', ' '.join(args)
     result = subprocess.call(args)
     if result:
@@ -76,8 +76,8 @@ def scenario():
         print 'failed'
 
     time.sleep(max_time_to_reach_consensus)
-    num_agreeing_clients = consensus(offset=max_time_to_reach_consensus)
-    print '%d out of %d clients are on the same chain' % (num_agreeing_clients, len(clients))
+    num_agreeing_clients = tx_propagation(offset=max_time_to_reach_consensus * 2)
+    print '%d out of %d clients received a tx' % (num_agreeing_clients, len(clients))
     return num_agreeing_clients == len(clients)
 
 
