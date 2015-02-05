@@ -1,60 +1,61 @@
 ---
+
 - name: create default security group 
   ec2_group:
-    name: "{{ security_group }}"
-    region: "{{ region }}"
+    name: "{{ ec2_security_group }}"
+    region: "{{ ec2_region }}"
     description: https://github.com/ethereum/system-testing/wiki
     rules:
         # ssh
       - proto: tcp
         from_port: 22
         to_port: 22
-        cidr_ip: "{{ ip_access_range }}"
+        cidr_ip: "{{ ec2_ip_access_range }}"
         # RPC control port
       - proto: tcp
         from_port: 30203
         to_port: 30203
-        cidr_ip: "{{ ip_access_range }}"
+        cidr_ip: "{{ ec2_ip_access_range }}"
         # ethereum incoming connection port
       - proto: tcp
         from_port: 30303
         to_port: 30303
-        cidr_ip: "{{ ip_access_range }}"
+        cidr_ip: "{{ ec2_ip_access_range }}"
     rules_egress:
       - proto: all
-        cidr_ip: "{{ ip_access_range }}"
+        cidr_ip: "{{ ec2_ip_access_range }}"
 
 - name: create security group for elastic search logger
   ec2_group:
     name: elarch
-    region: "{{ region }}"
+    region: "{{ ec2_region }}"
     description: https://github.com/ethereum/system-testing/wiki
     rules:
         # ssh
       - proto: tcp
         from_port: 22
         to_port: 22
-        cidr_ip: "{{ ip_access_range }}"
+        cidr_ip: "{{ ec2_ip_access_range }}"
         # http 
       - proto: tcp
         from_port: 80
         to_port: 80
-        cidr_ip: "{{ ip_access_range }}"
+        cidr_ip: "{{ ec2_ip_access_range }}"
         # incoming log events
       - proto: tcp
         from_port: 9200
         to_port: 9200
-        cidr_ip: "{{ ip_access_range }}"
+        cidr_ip: "{{ ec2_ip_access_range }}"
 
 
 - name: start ec2 instance for bootstrapping node
   ec2:  
-    group: "{{ security_group }}"
-    instance_type: "{{ instance_type }}" 
-    image: "{{ image }}" 
+    group: "{{ ec2_security_group }}"
+    instance_type: "{{ ec2_instance_type }}" 
+    image: "{{ ec2_image[ec2_region] }}" 
     wait: true 
-    region: "{{ region }}"
-    key_name: "{{ keypair }}"
+    region: "{{ ec2_region }}"
+    key_name: "{{ ec2_keypair }}"
     instance_tags:
         Name: boot
         Role: bootstrap
@@ -62,19 +63,15 @@
         Name: boot 
     exact_count: 1
     user_data: "#include https://get.docker.com"
-#  register: ec2
-
-#  checking for ssh not working yet
-# - include: add_host.yml
 
 - name: start new ec2 instances for client nodes
   ec2:  
-    group: "{{ security_group }}"
-    instance_type: "{{ instance_type }}" 
-    image: "{{ image }}" 
+    group: "{{ ec2_security_group }}"
+    instance_type: "{{ ec2_instance_type }}" 
+    image: "{{ ec2_image[ec2_region] }}" 
     wait: true 
-    region: "{{ region }}"
-    key_name: "{{ keypair }}"
+    region: "{{ ec2_region }}"
+    key_name: "{{ ec2_keypair }}"
     instance_tags:
         Name: "{{ item }}"
         Role: client
@@ -88,12 +85,12 @@
 
 - name: start ec2 instance for elasticsearch server 
   ec2:  
-    group: ["{{ security_group }}", elarch] 
+    group: ["{{ ec2_security_group }}", elarch] 
     instance_type: r3.xlarge # elarch needs a lot of RAM
-    image: "{{ image }}" 
+    image: "{{ ec2_image[ec2_region] }}" 
     wait: true 
-    region: "{{ region }}"
-    key_name: "{{ keypair }}"
+    region: "{{ ec2_region }}"
+    key_name: "{{ ec2_keypair }}"
     instance_tags:
         Name: elarch
         Role: logserver

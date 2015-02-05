@@ -1,17 +1,16 @@
 ---
 # default config for ec2 instances
 
-instance_type:      t2.medium
-security_group:     system-testing
-image:              ami-076e6542
-# the same image in us-east-1 as above
-# image:              ami-9eaa1cf6
-region:             us-west-1
-# region:             us-east-1
-keypair:            system-testing
+ec2_instance_type:      t2.medium
+ec2_security_group:     system-testing
+ec2_image:              
+  us-west-1:            ami-076e6542
+  us-east-1:            ami-9eaa1cf6
+ec2_region:             us-west-1
+ec2_keypair:            system-testing
 
 # limit access to AWS to these clients in CDIR notation
-ip_access_range:    0.0.0.0/0
+ec2_ip_access_range:    0.0.0.0/0
 
 
 total_no_clients:   5
