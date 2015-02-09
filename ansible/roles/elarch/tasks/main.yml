@@ -8,6 +8,7 @@
   ignore_errors: true
 
 - name: Build elasticsearch image locally
+  sudo: yes
   shell: cd /tmp/docker-elasticsearch && docker build --rm -t local/elasticsearch:1.4.2 .
 
 - name: Deploy elasticsearch instance

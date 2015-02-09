@@ -1,5 +1,4 @@
 ---
-
 - name: create default security group 
   ec2_group:
     name: "{{ ec2_security_group }}"
@@ -47,7 +46,6 @@
         to_port: 9200
         cidr_ip: "{{ ec2_ip_access_range }}"
 
-
 - name: start ec2 instance for bootstrapping node
   ec2:  
     group: "{{ ec2_security_group }}"
@@ -62,7 +60,8 @@
     count_tag: 
         Name: boot 
     exact_count: 1
-    user_data: "#include https://get.docker.com"
+    # WARNING: Enabling install via user_data will interfere with following ansible scripts. DO NOT USE! 
+    # user_data: "#include https://get.docker.com"
 
 - name: start new ec2 instances for client nodes
   ec2:  
@@ -79,7 +78,6 @@
     count_tag: # exactly one instance with the given name
         Name: "{{ item }}"
     exact_count: 1
-    user_data: "#include https://get.docker.com"
   with_sequence: start=1 end={{ total_no_clients }} format=client-%02x
 
 
@@ -97,4 +95,3 @@
     count_tag: 
         Name: elarch 
     exact_count: 1
-    user_data: "#include https://get.docker.com"

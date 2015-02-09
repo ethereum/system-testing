@@ -4,6 +4,7 @@
   remote_user: ubuntu
   gather_facts: false
   roles:
+      - docker_install
       - common
       - clients
 
