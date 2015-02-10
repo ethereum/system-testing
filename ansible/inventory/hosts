@@ -1,3 +1,2 @@
-# bogus entry, otherwise ansible will complain
-[dummy]
-127.0.0.1
+[local]
+localhost ansible_connection=local
