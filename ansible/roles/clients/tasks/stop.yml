@@ -1,11 +1,12 @@
 ---
+# this will only work when missing parameters are injected into the inventory file.
 - name: Stop client docker instances
   # ansible docker does not support stop by container name, only by image name. Stupid.
-  shell: docker stop {{ container_id }} 
+  shell: docker stop {{ docker_container_id['python'] }} 
 
 - name: Persist state of stopped client
   # ansible docker module does not support this ...
-  shell: docker commit {{ container_id }} {{ docker_image_py }}
+  shell: docker commit {{ docker_container_id['python'] }} {{ docker_image['python'] }}
 
 
 - name: Stop docker log forwarding

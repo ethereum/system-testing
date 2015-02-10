@@ -1,8 +1,8 @@
 ---
 - name: download latest client via docker
   sudo: true
-  # the official ansibe docker module does not have the option to just pull the image, it will also run it
-  shell: docker pull {{ docker_image_py }} 
+  # the official ansible docker module does not have the option to just pull the image, it will also run it
+  shell: docker pull {{ docker_image['python'] }} 
 
 - name: checkout git system-testing repo
   git:

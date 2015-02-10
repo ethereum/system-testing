@@ -53,7 +53,7 @@ def scenario():
     receiving_address = nodeid_tool.coinbase(str(recipient))
 
     rpc_host = inventory.inventory[sender][0]
-    rpc_port = str(30203)
+    rpc_port = str(22000)
     value = str(100)
 
     # dump account

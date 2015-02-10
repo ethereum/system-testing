@@ -1,22 +1,19 @@
 ---
+# this will only work when missing parameters are injected into the inventory file.
 - name: start client with parameters from inventory file 
   docker: 
-      image:    "{{ docker_image_py }}"
-      name:     "{{ container_id }}"     
+      image:    "{{ docker_image['python'] }}"
+      name:     "{{ docker_container_id['python'] }}"     
       expose:   ["30203", "30303"]
-      ports:    ["30203:30203", "30303:30303"] 
-      
-      # parameters fetched from inventory file
-      command: "{{ docker_run_args }}"
+      ports:    ["22000:30203", "32000:30303"] 
+      command: "{{ docker_run_args['python'] }}"
 
 - name: Forward logfiles with parameters from inventory file
   # fire and forget, don't wait to finish, run for one day
   async: 86400
   poll: 0
   # again, ansible docker module does not support logs
-  # pyethereum wrongly logs to stderr
-  # parameters fetched from inventory file
-  shell: docker logs --follow=true {{ container_id }} 2>&1 | {{ repo_path }}/logging/teees.py {{ docker_tee_args }} 
+  shell: docker logs --follow=true {{ docker_container_id['python'] }} 2>&1 | {{ repo_path }}/logging/teees.py {{ docker_tee_args['python'] }} 
   register: log_runner
 
 - name: verify previous task

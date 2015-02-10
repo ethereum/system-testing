@@ -12,13 +12,13 @@
         cidr_ip: "{{ ec2_ip_access_range }}"
         # RPC control port
       - proto: tcp
-        from_port: 30203
-        to_port: 30203
+        from_port: 20000
+        to_port: 22999
         cidr_ip: "{{ ec2_ip_access_range }}"
         # ethereum incoming connection port
       - proto: tcp
-        from_port: 30303
-        to_port: 30303
+        from_port: 30000
+        to_port: 33303
         cidr_ip: "{{ ec2_ip_access_range }}"
     rules_egress:
       - proto: all

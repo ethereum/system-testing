@@ -5,9 +5,6 @@ http://docs.ansible.com/developing_inventory.html
 http://docs.ansible.com/playbooks_variables.html#passing-variables-on-the-command-line
 
 docker_run_args = []
-
-p2p_port = 30000 + N
-rpc_port = 8000 + N
 """
 from base import Inventory
 import nodeid_tool
@@ -68,12 +65,15 @@ def start_clients(clients=[]):
                                      mining_cpu_percentage=mining_cpu_percentage,
                                      req_num_peers=req_num_peers,
                                      coinbase=coinbase)
-        d['vars']['docker_run_args'] = dra
-        d['vars']['container_id'] = client
-        d['vars']['docker_tee_args'] = teees_args.format(elarch_ip=inventory.es, pubkey_hex=pubkey)
+        d['vars']['docker_run_args'] = {} 
+        d['vars']['docker_run_args']['python'] = dra
+        d['vars']['docker_container_id'] = {}
+        d['vars']['docker_container_id']['python'] = client
+        d['vars']['docker_tee_args'] = {}
+        d['vars']['docker_tee_args']['python'] = teees_args.format(elarch_ip=inventory.es, pubkey_hex=pubkey)
         inventory.inventory[client] = d
-#    print json.dumps(inventory.inventory, indent=2)
-    exec_playbook(inventory.inventory, playbook='client-start.yml')
+    print json.dumps(inventory.inventory, indent=2)
+#    exec_playbook(inventory.inventory, playbook='client-start.yml')
 
 
 def stop_clients(clients=[]):

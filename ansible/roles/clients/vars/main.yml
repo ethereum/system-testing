@@ -2,12 +2,11 @@
 # the system-testing source repo will be cloned to this destionation
 repo_path: /home/ubuntu/git
 
-# name given to the docker container id in which the client runs
+docker_image: 
+  python : sveneh/pyethereum-develop
+
+# client configuration details - only valid for ansible testing,
+
 container_id: container_id
-
-docker_image_py: sveneh/pyethereum-develop
-
-# client configuration details
-
 req_num_peers: 3
 mining_cpu_percentage: 10
