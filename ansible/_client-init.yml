@@ -1,18 +1,12 @@
 ---
-# aws hack, pt 1 
-- include: roles/clients/meta/aws-hack.yml
-
-- name: First time client init
-  hosts: tag_Role_client
+# this is just for testing.
+- name: Ansible-only testing scenario
+  hosts: tag_Name_client-01
+# hosts: tag_Role_client
   remote_user: ubuntu
   gather_facts: false
   roles:
       - clients
-  
-  # aws hack, pt 2  
-  vars: 
-    elarch_ip:      "{{ hostvars[groups['tag_Name_elarch'][0]]['ansible_ec2_public_ipv4'] }}"
-    bootstrap_ip:   "{{ hostvars[groups['tag_Name_boot'][0]]['ansible_ec2_public_ipv4'] }}"
   
   tasks:
       - include: roles/clients/tasks/init.yml

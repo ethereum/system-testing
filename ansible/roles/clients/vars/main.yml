@@ -6,7 +6,6 @@ docker_image:
   python : sveneh/pyethereum-develop
 
 # client configuration details - only valid for ansible testing,
-
-container_id: container_id
-req_num_peers: 3
-mining_cpu_percentage: 10
+dbg_container_id: container_id
+dbg_req_num_peers: 3
+dbg_mining_cpu_percentage: 10

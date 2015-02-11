@@ -1,13 +1,13 @@
 ---
 - name: initial start of ethereum python client, connection to bootstrapping node
   docker: 
-      image:    "{{ docker_image_py }}"
-      name:     "{{ container_id }}"     
+      image:    "{{ docker_image['python'] }}"
+      name:     "{{ dbg_container_id }}"     
       expose:   ["30203", "30303"]
       ports:    ["30203:30203", "30303:30303"] 
       
       # parameters given to client 
-      command: --logging :debug --log_json 1 --remote {{ bootstrap_ip }} --port 30303 --mining {{ mining_cpu_percentage }} --peers {{ req_num_peers }}
+      command: --logging :debug --log_json 1 --remote {{ groups['tag_Name_boot'][0] }} }} --port 30303 --mining {{ dbg_mining_cpu_percentage }} --peers {{ dbg_req_num_peers }}
 
 - name: Log docker output to elarch
   # fire and forget, don't wait to finish, run for one day
@@ -15,7 +15,7 @@
   poll: 0
   # again, ansible docker module does not support logs
   # pyethereum wrongly logs to stderr
-  shell: docker logs --follow=true {{ container_id }} 2>&1 | {{ repo_path }}/logging/teees.py {{ elarch_ip }}
+  shell: docker logs --follow=true {{ dbg_container_id }} 2>&1 | {{ repo_path }}/logging/teees.py {{ groups['tag_Name_elarch'][0]}}
   register: log_runner
 
 - name: verify previous task
