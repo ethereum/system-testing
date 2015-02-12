@@ -9,7 +9,7 @@
       - clients
   
   tasks:
-    - include: roles/clients/tasks/stop.yml
+    - include: roles/clients/tasks/reset.yml
       vars:
         
         # these are normally set from the python controller

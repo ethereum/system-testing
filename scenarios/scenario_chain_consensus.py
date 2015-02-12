@@ -46,6 +46,7 @@ def scenario():
     events = sorted(events, key=lambda x: x['time'])
 
     # FIXME, reset client storage
+    # use client-reset.yml playbook, needs to set docker_container_id in inventory
 
     # start-up all clients
     start_clients(clients=clients)

@@ -1,0 +1,13 @@
+---
+- include: stop.yml
+
+- name: remove all containers from host
+  shell: docker rm --force $(docker ps --all --quiet)
+  ignore_errors: true
+
+- name: remove all images from host
+  shell: docker rmi --force $(docker images --all --quiet)
+  ignore_errors: true
+
+# reload all images. TODO cache the original image
+- include: setup.yml
