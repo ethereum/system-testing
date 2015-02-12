@@ -1,0 +1,29 @@
+---
+# this is just for testing.
+- name: Ansible-only testing scenario
+  hosts: tag_Name_client-01
+# hosts: tag_Role_client
+  remote_user: ubuntu
+  gather_facts: false
+  roles:
+      - clients
+  
+  tasks:
+    - include: roles/clients/tasks/start.yml
+      vars:
+        
+        # these are normally set from the python controller
+        dbg_req_num_peers: 3
+        dbg_mining_cpu_percentage: 10
+        
+        docker_container_id:
+          go:     container_go
+          python: container_python
+
+        docker_run_args:
+          go:     -loglevel=5 -seednode={{ groups['tag_Name_boot'][0] }}:30303 -maxpeer={{ dbg_req_num_peers }}     
+          python: --logging :debug --log_json 1 --remote {{ groups['tag_Name_boot'][0] }} --port 30303 --mining {{ dbg_mining_cpu_percentage }} --peers {{ dbg_req_num_peers }}
+
+        docker_tee_args:
+          go:     "{{ groups['tag_Name_elarch'][0]}}"
+          python: "{{ groups['tag_Name_elarch'][0]}}"

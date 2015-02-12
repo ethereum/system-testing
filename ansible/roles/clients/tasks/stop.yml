@@ -1,19 +1,43 @@
 ---
 # this will only work when missing parameters are injected into the inventory file.
-- name: Stop client docker instances
+# TODO do all in a loop
+
+- name: Stop go client docker instances
   # ansible docker does not support stop by container name, only by image name. Stupid.
-  shell: docker stop {{ docker_container_id['python'] }} 
+  shell: docker stop {{ docker_container_id['go'] }} 
+  tags:
+    - go
 
-- name: Persist state of stopped client
+- name: Persist state of stopped go client
   # ansible docker module does not support this ...
-  shell: docker commit {{ docker_container_id['python'] }} {{ docker_image['python'] }}
+  shell: docker commit {{ docker_container_id['go'] }} {{ docker_image['go'] }}
+  tags:
+    - go
 
-
-- name: Stop docker log forwarding
+- name: Stop go docker log forwarding
   # there is no Ansible API to stop async tasks, unfortunately.
-  shell: "{{ item }}"
-  with_items:
-      - pkill --full teees
-      - pkill --full "docker logs"
+  shell: pkill --parent $(pgrep --full "docker logs.*{{ docker_container_id['go'] }}.*teees")
   # pkill gives -15 return code, don't know why. Ignore it
   failed_when: false 
+  tags:
+    - go
+
+- name: Stop python client docker instances
+  # ansible docker does not support stop by container name, only by image name. Stupid.
+  shell: docker stop {{ docker_container_id['python'] }} 
+  tags:
+    - python
+
+- name: Persist state of stopped python client
+  # ansible docker module does not support this ...
+  shell: docker commit {{ docker_container_id['python'] }} {{ docker_image['python'] }}
+  tags:
+    - python
+
+- name: Stop python docker log forwarding
+  # there is no Ansible API to stop async tasks, unfortunately.
+  shell: pkill --parent $(pgrep --full "docker logs.*{{ docker_container_id['python'] }}.*teees")
+  # pkill gives -15 return code, don't know why. Ignore it
+  failed_when: false 
+  tags:
+    - python

@@ -1,20 +1,51 @@
 ---
 # this will only work when missing parameters are injected into the inventory file.
-- name: start client with parameters from inventory file 
+# TODO: run all clients in a loop
+
+- name: start go client with parameters from inventory file 
+  docker: 
+      image:    "{{ docker_image['go'] }}"
+      name:     "{{ docker_container_id['go'] }}"     
+      expose:   ["8080", "30303"]
+      ports:    ["20000:30203", "30000:30303"] 
+      command: "{{ docker_run_args['go'] }}"
+  tags:
+    - go
+
+- name: start python client with parameters from inventory file 
   docker: 
       image:    "{{ docker_image['python'] }}"
       name:     "{{ docker_container_id['python'] }}"     
       expose:   ["30203", "30303"]
       ports:    ["22000:30203", "32000:30303"] 
       command: "{{ docker_run_args['python'] }}"
+  tags:
+    - python
 
-- name: Forward logfiles with parameters from inventory file
+- name: Forward go logfiles with parameters from inventory file
   # fire and forget, don't wait to finish, run for one day
   async: 86400
   poll: 0
   # again, ansible docker module does not support logs
-  shell: docker logs --follow=true {{ docker_container_id['python'] }} 2>&1 | {{ repo_path }}/logging/teees.py {{ docker_tee_args['python'] }} 
-  register: log_runner
+  shell: docker logs --follow=true {{ docker_container_id['go'] }} 2>&1 | {{ repo_path }}/logging/teees.py {{ docker_tee_args['go'] }} 
+  register: log_runner_go
+  tags:
+    - go
 
 - name: verify previous task
-  async_status: jid={{ log_runner.ansible_job_id }}
+  async_status: jid={{ log_runner_go.ansible_job_id }}
+  tags:
+    - go 
+
+- name: Forward python logfiles with parameters from inventory file
+  async: 86400
+  poll: 0
+  shell: docker logs --follow=true {{ docker_container_id['python'] }} 2>&1 | {{ repo_path }}/logging/teees.py {{ docker_tee_args['python'] }} 
+  register: log_runner_python
+  tags: 
+    - python
+
+- name: verify previous task
+  async_status: jid={{ log_runner_python.ansible_job_id }}
+  tags:
+    - python

@@ -1,13 +1,27 @@
 ---
+- name: initial start of ethereum go client, connection to bootstrapping node
+  docker: 
+      image:    "{{ docker_image['go'] }}"
+      name:     "{{ dbg_container_id }}_go"     
+      expose:   ["8080", "30303"]
+      ports:    ["20000:30203", "30000:30303"] 
+      
+      # parameters given to client 
+      command: -loglevel=5 -seednode={{ groups['tag_Name_boot'][0] }}:30303 -maxpeer={{ dbg_req_num_peers }}
+  tags:
+    - go
+
 - name: initial start of ethereum python client, connection to bootstrapping node
   docker: 
       image:    "{{ docker_image['python'] }}"
-      name:     "{{ dbg_container_id }}"     
+      name:     "{{ dbg_container_id }}_python"     
       expose:   ["30203", "30303"]
-      ports:    ["30203:30203", "30303:30303"] 
+      ports:    ["22000:30203", "32000:30303"] 
       
       # parameters given to client 
-      command: --logging :debug --log_json 1 --remote {{ groups['tag_Name_boot'][0] }} }} --port 30303 --mining {{ dbg_mining_cpu_percentage }} --peers {{ dbg_req_num_peers }}
+      command: --logging :debug --log_json 1 --remote {{ groups['tag_Name_boot'][0] }} --port 30303 --mining {{ dbg_mining_cpu_percentage }} --peers {{ dbg_req_num_peers }}
+  tags:
+    - python
 
 - name: Log docker output to elarch
   # fire and forget, don't wait to finish, run for one day

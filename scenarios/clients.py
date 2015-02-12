@@ -16,6 +16,7 @@ import os
 
 key_file = '../ansible/system-testing.pem'
 
+# needs some for go, too
 docker_run_args = '--logging :debug --log_json 1 --remote {bootstrap_ip} --port 30303 ' \
                   '--mining {mining_cpu_percentage} --peers {req_num_peers} --address {coinbase}'
 teees_args = '{elarch_ip} guid,{pubkey_hex}'
@@ -37,7 +38,8 @@ def mk_inventory_executable(inventory):
 
 def exec_playbook(inventory, playbook):
     fn = mk_inventory_executable(inventory)
-    args = ['ansible-playbook', '../ansible/%s' % playbook, '-i', fn] + ansible_args
+    # replace for go with --tags=go or delete to address both
+    args = ['ansible-playbook', '../ansible/%s' % playbook, '-i', fn, '--tags=python'] + ansible_args
     print 'executing', ' '.join(args)
     result = subprocess.call(args)
     if result:
@@ -65,6 +67,7 @@ def start_clients(clients=[]):
                                      mining_cpu_percentage=mining_cpu_percentage,
                                      req_num_peers=req_num_peers,
                                      coinbase=coinbase)
+        # add here go parmeters 
         d['vars']['docker_run_args'] = {} 
         d['vars']['docker_run_args']['python'] = dra
         d['vars']['docker_container_id'] = {}
@@ -72,8 +75,8 @@ def start_clients(clients=[]):
         d['vars']['docker_tee_args'] = {}
         d['vars']['docker_tee_args']['python'] = teees_args.format(elarch_ip=inventory.es, pubkey_hex=pubkey)
         inventory.inventory[client] = d
-    print json.dumps(inventory.inventory, indent=2)
-#    exec_playbook(inventory.inventory, playbook='client-start.yml')
+#    print json.dumps(inventory.inventory, indent=2)
+    exec_playbook(inventory.inventory, playbook='client-start.yml')
 
 
 def stop_clients(clients=[]):
@@ -81,6 +84,17 @@ def stop_clients(clients=[]):
     inventory = Inventory()
     clients = clients or list(inventory.clients)
     inventory.inventory['client_stop_group'] = dict(children=clients, hosts=[])
+    assert inventory.es
+    assert inventory.boot
+    for client in clients:
+        assert client
+        d = dict(hosts=inventory.inventory[client], vars=dict())
+        # add the same for go
+        d['vars']['docker_container_id'] = {}
+        d['vars']['docker_container_id']['python'] = client
+		# add the same container id for go
+        inventory.inventory[client] = d
+#    print json.dumps(inventory.inventory, indent=2)
     exec_playbook(inventory.inventory, playbook='client-stop.yml')
 
 
