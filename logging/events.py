@@ -43,17 +43,18 @@ ToDo:
 Testing mode which reads logs of a client and checks
     * if all required events where used
     * if all key/values are within the specicfication
+    * uncomment necessary log event when needed
 
 """
 
-address = 'hex40, e.g. 0x0123456789abcdef0123456789abcdef01234567'
+address = 'hex40, e.g. 0123456789abcdef0123456789abcdef01234567'
 protocol_version = 'int, e.g. 52'
-guid = 'hex128, e.g. 0x0123456789abcdef... 128 digits'
-client_addr = 'host:port, e.g. 10.46.56.35:30303 or poc-8.ethdev.com:30303'
+guid = 'hex128, e.g. 0123456789abcdef... exactly 128 digits'
+client_addr = 'ipv4:port, e.g. 10.46.56.35:30303'
 client_impl = 'Impl/OS/version, e.g. Go/Linux/0.8.2'
-hexhash = 'hex64, e.g. 0x0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef'
+hexhash = 'hex64, e.g. 0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef'
 hexrlp = 'hexN'
-timestamp = 'YYYY-MM-DDTHH:MM:SS.SSSSSSZ'
+timestamp = 'YYYY-MM-DDTHH:MM:SS.SSSSSSZ - this is optional'
 num_connections = 'int, e.g. 4 - number of other nodes this client is currently connected to'
 
 class Event(object):
@@ -89,7 +90,7 @@ class P2PEvent(Event):
     defaults.update(Event.defaults)
 
 # P2PEvent('p2p.connecting', remote_addr=client_addr)
-P2PEvent('p2p.connected', comment='as soon as a successful connetion to another node is established', level='info', remote_addr=client_addr, remote_impl=client_impl)
+P2PEvent('p2p.connected', comment='as soon as a successful connetion to another node is established', level='info', remote_addr=client_addr, remote_version_string=client_impl)
 #P2PEvent('p2p.handshaked', remote_capabilities=[])
 #P2PEvent('p2p.disconnected')
 #P2PEvent('p2p.disconnecting', reason='')
