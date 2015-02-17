@@ -50,7 +50,7 @@ class Event(object):
 
 # Startup
 Event('starting', comment='one of the first log events, before any operation is started',
-      level='info', eth_version=protocol_version, client_impl=client_impl)
+      eth_version=protocol_version, client_impl=client_impl)
 
 # P2P
 
@@ -62,7 +62,7 @@ class P2PEvent(Event):
 # P2PEvent('p2p.connecting', remote_addr=client_addr)
 P2PEvent('p2p.connected',
          comment='as soon as a successful connetion to another node is established',
-         level='info', remote_addr=client_addr, remote_version_string=client_impl)
+         remote_addr=client_addr, remote_version_string=client_impl)
 # P2PEvent('p2p.handshaked', remote_capabilities=[])
 # P2PEvent('p2p.disconnected')
 # P2PEvent('p2p.disconnecting', reason='')
