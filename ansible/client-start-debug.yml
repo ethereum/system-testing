@@ -21,7 +21,7 @@
           python: container_python
 
         docker_run_args:
-          go:     -loglevel=5 -seednode={{ groups['tag_Name_boot'][0] }}:30303 -maxpeer={{ dbg_req_num_peers }}     
+          go:     -loglevel=5 -port=30000 -bootnodes=enode://{{ g_boot_public_key }}@{{ groups['tag_Name_boot'][0] }}:30303 -maxpeer={{ dbg_req_num_peers }}     
           python: --logging :debug --log_json 1 --remote {{ groups['tag_Name_boot'][0] }} --port 30303 --mining {{ dbg_mining_cpu_percentage }} --peers {{ dbg_req_num_peers }}
 
         docker_tee_args:

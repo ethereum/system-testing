@@ -11,7 +11,7 @@
 
 - name: Persist state of stopped go client
   # ansible docker module does not support this ...
-  shell: docker commit {{ docker_container_id['go'] }} {{ docker_image['go'] }}
+  shell: docker commit {{ docker_container_id['go'] }} {{ g_docker_image['go'] }}
   ignore_errors: true  
   tags:
     - go
@@ -33,7 +33,7 @@
 
 - name: Persist state of stopped python client
   # ansible docker module does not support this ...
-  shell: docker commit {{ docker_container_id['python'] }} {{ docker_image['python'] }}
+  shell: docker commit {{ docker_container_id['python'] }} {{ g_docker_image['python'] }}
   ignore_errors: true  
   tags:
     - python

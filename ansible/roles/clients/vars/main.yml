@@ -3,5 +3,5 @@
 repo_path: /home/ubuntu/git
 
 docker_image: 
-  go:     sveneh/go-ethereum
+  go:     ethereum/client-go
   python: sveneh/pyethereum-develop

@@ -15,10 +15,14 @@
         from_port: 20000
         to_port: 22999
         cidr_ip: "{{ ec2_ip_access_range }}"
-        # ethereum incoming connection port
+        # ethereum incoming connection ports
+      - proto: udp
+        from_port: 30000
+        to_port: 32999 
+        cidr_ip: "{{ ec2_ip_access_range }}"
       - proto: tcp
         from_port: 30000
-        to_port: 33303
+        to_port: 32999 
         cidr_ip: "{{ ec2_ip_access_range }}"
     rules_egress:
       - proto: all

@@ -6,12 +6,41 @@
 #      ports:    30303:30303
 #      command:  --client-name bootstrap --mining off
 
+- name: download / updates latest Go clients base via docker
+  sudo: true
+  # the official ansible docker module does not have the option to just pull the image, it will also run it
+  shell: docker pull {{ g_docker_image['go'] }} 
+  register: docker_pull_out
+  changed_when: '"Downloaded newer image" in docker_pull_out.stdout'
 
 
-- name: Start bootstrapping node (python client)
+- name: Prepare building go bootstrap image
+  copy: src=../files/docker-go-boot dest=/tmp
+
+- name: Build go bootstrap image locally
+  sudo: yes
+  docker_image:
+    path: /tmp/docker-go-boot
+    name: local/eth-go-boot
+    state: build
+
+
+- name: Start bootstrapping node (go)
   sudo: yes
   docker: 
-      image:    sveneh/pyethereum-develop
-      expose:   30303
-      ports:    30303:30303
-      command:  --peers 0 --mining 0 
+    image:    local/eth-go-boot
+    expose:   
+      - 30303/tcp
+      - 30303/udp
+    ports:    
+      - 30303:30303/tcp
+      - 30303:30303/udp
+    command:  -nodekeyhex={{ boot_private_key }} -addr=:30303
+
+#- name: Start bootstrapping node (python client)
+#  sudo: yes
+#  docker: 
+#      image:    sveneh/pyethereum-develop
+#      expose:   30303
+#      ports:    30303:30303
+#      command:  --peers 0 --mining 0 

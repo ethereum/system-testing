@@ -2,10 +2,12 @@
 - name: download latest clients via docker
   sudo: true
   # the official ansible docker module does not have the option to just pull the image, it will also run it
-  shell: docker pull {{ docker_image[item] }} 
+  shell: docker pull {{ g_docker_image[item] }} 
   with_items: 
     - go
     - python
+  register: docker_pull_out
+  changed_when: '"Downloaded newer image" in docker_pull_out.stdout'
 
 - name: checkout git system-testing repo
   git:

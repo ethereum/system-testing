@@ -1,0 +1,10 @@
+--- 
+# these are variables needed in multiple places in the playbooks. They are all name-space'd with g_lobal
+
+# the docker images we use for client
+g_docker_image: 
+  go:     ethereum/client-go
+  python: sveneh/pyethereum-develop
+
+# the private key of the bootstrap node is defined in roles/boot/vars/main.yml, this is only the public key
+g_boot_public_key: 829bb728a1b38d2e3bb8288d750502f7dce2ee329aaebf48ddc54e0cfc8003b3068fe57e20277ba50e42826c4d2bfcb172699e108d9e90b3339f8b6589449faf

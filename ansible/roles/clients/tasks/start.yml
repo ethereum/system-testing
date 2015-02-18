@@ -4,22 +4,44 @@
 
 - name: start go client with parameters from inventory file 
   docker: 
-      image:    "{{ docker_image['go'] }}"
+      image:    "{{ g_docker_image['go'] }}"
       name:     "{{ docker_container_id['go'] }}"     
-      expose:   ["8080", "30303"]
-      ports:    ["20000:30203", "30000:30303"] 
+      expose:   
+        - 8545
+        - 30000/udp
+        - 30000/tcp
+      ports:    
+        - 20000:8545/tcp
+        - 30000:30000/udp
+        - 30000:30000/tcp
       command: "{{ docker_run_args['go'] }}"
   tags:
     - go
 
 - name: start python client with parameters from inventory file 
   docker: 
-      image:    "{{ docker_image['python'] }}"
+      image:    "{{ g_docker_image['python'] }}"
       name:     "{{ docker_container_id['python'] }}"     
       expose:   ["30203", "30303"]
       ports:    ["22000:30203", "32000:30303"] 
       command: "{{ docker_run_args['python'] }}"
   tags:
+    - python
+
+
+- name: ensure the go clients runs, check cmd-line parameters if this fails
+  shell: docker ps 
+  register: docker_ps_out
+  failed_when: not docker_container_id['go'] in docker_ps_out.stdout
+  tags: 
+    - go
+
+
+- name: ensure the python clients runs, check cmd-line parameters if this fails
+  shell: docker ps 
+  register: docker_ps_out
+  failed_when: not docker_container_id['python'] in docker_ps_out.stdout
+  tags: 
     - python
 
 - name: Forward go logfiles with parameters from inventory file
