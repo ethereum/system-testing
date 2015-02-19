@@ -8,7 +8,7 @@ import nodeid_tool
 max_time_to_reach_consensus = 10
 random.seed(42)
 from elasticsearch_dsl import Search
-from eshelper import client, pprint
+from eshelper import client, pprint, F
 
 
 def scenario():
@@ -38,7 +38,7 @@ def scenario():
         }
     """
     s = Search(client)
-    s = s.filter('term', at_message='starting')
+    s = s.filter(F('term', at_message='starting'))
     s.aggs.bucket('by_guid', 'terms', field='guid', size=0)
     response = s.execute()
     pprint(response)
@@ -70,7 +70,7 @@ def scenario():
         }
     """
     s = Search(client)
-    s = s.filter('term', at_message='p2p.connected')
+    s = s.filter(F('term', at_message='p2p.connected'))
     s.aggs.bucket('by_guid', 'terms', field='guid', size=0)
     response = s.execute()
     if not len(response.aggregations.by_guid.buckets) == len(clients):
@@ -83,8 +83,8 @@ def scenario():
     guids = [nodeid_tool.topub(ext_id) for ext_id in clients]
     for guid in guids:
         s = Search(client)
-        s = s.filter('term', at_message='p2p.connected')
-        s = s.filter('term', guid=guid)
+        s = s.filter(F('term', at_message='p2p.connected'))
+        s = s.filter(F('term', guid=guid))
     s.aggs.bucket('by_remote_id', 'terms', field='remote_id', size=0)
     response = s.execute()
 
