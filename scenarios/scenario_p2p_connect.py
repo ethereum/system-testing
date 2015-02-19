@@ -22,11 +22,11 @@ def scenario():
     inventory = Inventory()
     clients = inventory.clients
 
-    # start-up all clients
-    start_clients(clients=clients)
-
-    # let them agree on a block
-    time.sleep(max_time_to_reach_consensus)
+    if True:
+        # start-up all clients
+        start_clients(clients=clients)
+        # let them agree on a block
+        time.sleep(max_time_to_reach_consensus)
 
     # check all started
     """
@@ -41,7 +41,7 @@ def scenario():
     s = s.filter(F('term', at_message='starting'))
     s.aggs.bucket('by_guid', 'terms', field='guid', size=0)
     response = s.execute()
-    pprint(response)
+    # pprint(response)
 
     num_started = len(response.aggregations.by_guid.buckets)
     num_started_expected = len(clients)
@@ -85,11 +85,21 @@ def scenario():
         s = Search(client)
         s = s.filter(F('term', at_message='p2p.connected'))
         s = s.filter(F('term', guid=guid))
-    s.aggs.bucket('by_remote_id', 'terms', field='remote_id', size=0)
-    response = s.execute()
+        s.aggs.bucket('by_remote_id', 'terms', field='remote_id', size=0)
+        response = s.execute()
+        if not len(response.aggregations.by_remote_id.buckets) == len(clients) - 1:
+            return False
 
-    if not len(response.aggregations.by_remote_id.buckets) == len(clients) - 1:
-        return False
+    # make sure they did not connect themselfs
+    for guid in guids:
+        s = Search(client)
+        s = s.filter(F('term', at_message='p2p.connected'))
+        s = s.filter(F('term', guid=guid))
+        s = s.filter(F('term', remote_id=guid))
+        response = s.execute()
+        if response.hits.total > 0:
+            print "FAIL: connected to self", guid
+            return False
 
     return True
 
