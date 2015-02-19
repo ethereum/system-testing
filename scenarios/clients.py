@@ -18,12 +18,13 @@ key_file = '../ansible/system-testing.pem'
 use_impls = ['go']
 
 # this must be the same as in ../ansible/group_vars/all
-g_boot_public_key = '829bb728a1b38d2e3bb8288d750502f7dce2ee329aaebf48ddc54e0cfc8003b3068fe57e20277ba50e42826c4d2bfcb172699e108d9e90b3339f8b6589449faf' # fixme use node_id tool cli
+# fixme use node_id tool cli
+g_boot_public_key = '829bb728a1b38d2e3bb8288d750502f7dce2ee329aaebf48ddc54e0cfc8003b3068fe57e20277ba50e42826c4d2bfcb172699e108d9e90b3339f8b6589449faf'
 
 docker_run_args = {}
 docker_run_args['go'] = '-port=30000 -loglevel=5 ' \
     '-bootnodes=enode://{bootstrap_public_key}@{bootstrap_ip}:30303 ' \
-    '-maxpeer={req_num_peers}' \
+    '-maxpeer={req_num_peers} ' \
     '-nodekeyhex={privkey}'
 
 docker_run_args['python'] = '--logging :debug --log_json 1 --remote {bootstrap_ip} --port 30303 ' \

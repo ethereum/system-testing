@@ -3,6 +3,7 @@ from elasticsearch_dsl import Search
 from elasticsearch_dsl import Q as _Q
 from elasticsearch_dsl import F as _F
 import time
+import json
 import datetime
 from base import Inventory
 
@@ -16,6 +17,10 @@ F = lambda *args, **kargs: _F(*args, **at_kargs(kargs))
 es_endpoint = '%s:9200' % Inventory().es
 # es_endpoint = '54.153.13.89:9200'  # FIXME speedup hack
 client = Elasticsearch(es_endpoint)
+
+
+def pprint(x):
+    print json.dumps(x.to_dict(), indent=2)
 
 
 def time_range_filter(offset=60):

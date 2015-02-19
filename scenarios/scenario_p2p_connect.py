@@ -8,7 +8,7 @@ import nodeid_tool
 max_time_to_reach_consensus = 10
 random.seed(42)
 from elasticsearch_dsl import Search
-from eshelper import client
+from eshelper import client, pprint
 
 
 def scenario():
@@ -38,15 +38,25 @@ def scenario():
         }
     """
     s = Search(client)
-    s.filter('term', at_message='starting')
+    s = s.filter('term', at_message='starting')
     s.aggs.bucket('by_guid', 'terms', field='guid', size=0)
     response = s.execute()
-    if not len(response.aggregations.by_guuid.buckets) == len(clients):
+    pprint(response)
+
+    num_started = len(response.aggregations.by_guid.buckets)
+    num_started_expected = len(clients)
+
+    # assert response.hits.total = num_started_expected
+
+    if not num_started == num_started_expected:
+        print 'FAIL: only %d (of %d) clients logged "starting"' % (num_started, num_started_expected)
         return False
-    for tag in response.aggregations.by_guuid.buckets:
+    print 'PASS: correct clients started log events'
+    for tag in response.aggregations.by_guid.buckets:
         # print(tag.key, tag.doc_count)
         if not tag.doc_count == 1:
             return False
+    print 'PASS: all clients started just once'
 
     # check all connected
     """
