@@ -49,10 +49,12 @@ if len(sys.argv) < 2:
 es_endpoint = sys.argv[1]
 extra = dict(x.split(',') for x in sys.argv[2:])
 
-### ES
+# ES
 es = elasticsearch.Elasticsearch(es_endpoint)
-es_index_name = 'logstash-%s' % datetime.datetime.utcnow().strftime('%Y.%m.%d') # logstash-YYYY.MM.DD
+# logstash-YYYY.MM.DD
+es_index_name = 'logstash-%s' % datetime.datetime.utcnow().strftime('%Y.%m.%d')
 es_doc_type = 'ethlog'
+
 
 def es_log(doc):
     es.create(index=es_index_name, doc_type=es_doc_type, body=doc)
@@ -61,21 +63,29 @@ lsformatter = LogstashFormatter(defaults=extra)
 
 while True:
     l = sys.stdin.readline().strip()
+    if not l:
+        continue
     try:
         d = json.loads(l)
     except ValueError:
         d = dict(event='notjson', log_line=l, logging_error='raw input')
 
+    # FIX for wrongly specified events
+    d = d if len(d) > 1 else dict(list(d.values()[0].items()) + [('event', d.keys()[0])])
+
     # check that there is an event
-    if not 'event' in d:
+    if 'event' not in d:
         d['event'] = 'notset'
         d['logging_error'] = 'event_not_set'
 
     # substitute event name
     d['event'] = substitutions.get(d['event'], d['event'])
 
+    # format for kibana
+    kd = lsformatter.format(d)
+
     # send to elasticsearch
-    es_log(lsformatter.format(d))
+    es_log(kd)
 
     # tee like echo
 #    print l

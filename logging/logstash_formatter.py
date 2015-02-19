@@ -6,6 +6,7 @@ import socket
 import datetime
 import json
 
+
 def _default_json_default(obj):
     """
     Coerce everything to strings.
@@ -16,7 +17,9 @@ def _default_json_default(obj):
     else:
         return str(obj)
 
+
 class LogstashFormatter(object):
+
     """
     A custom formatter to prepare logs to be
     shipped out to logstash.
@@ -44,11 +47,12 @@ class LogstashFormatter(object):
         """
         assert 'event' in fields
         msg = fields.pop('event')
+        ts = fields.pop('ts', datetime.datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%S.%fZ'))
 
         logr = self.defaults.copy()
 
         logr.update({'@message': msg,
-                     '@timestamp': datetime.datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%S.%fZ'),
+                     '@timestamp': ts,
                      '@source_host': self.source_host,
                      '@fields': self._build_fields(logr, fields)})
 
