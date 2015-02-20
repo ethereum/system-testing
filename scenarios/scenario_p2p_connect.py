@@ -1,12 +1,10 @@
 from base import Inventory
 from clients import start_clients, stop_clients
-import random
 import time
 import sys
 import nodeid_tool
 
 scenario_run_time_s = 30
-random.seed(42)
 from elasticsearch_dsl import Search
 from eshelper import client, pprint, F
 
@@ -29,7 +27,7 @@ def scenario():
     inventory = Inventory()
     clients = inventory.clients
 
-    # execute(clients)
+    execute(clients)
 
     # check all started
     """
