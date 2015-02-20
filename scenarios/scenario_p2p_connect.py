@@ -1,15 +1,22 @@
 from base import Inventory
-from clients import start_clients
+from clients import start_clients, stop_clients
 import random
 import time
 import sys
 import nodeid_tool
 
-max_time_to_reach_consensus = 10
+scenario_run_time_s = 30
 random.seed(42)
 from elasticsearch_dsl import Search
 from eshelper import client, pprint, F
 
+
+
+def execute(clients):
+    start_clients(clients=clients)
+    print 'let it run for %d secs...' % scenario_run_time_s
+    time.sleep(scenario_run_time_s)
+    stop_clients(clients=clients)
 
 def scenario():
     """
@@ -22,11 +29,7 @@ def scenario():
     inventory = Inventory()
     clients = inventory.clients
 
-    # start-up all clients
-    start_clients(clients=clients)
-
-    # let them agree on a block
-    time.sleep(max_time_to_reach_consensus)
+    # execute(clients)
 
     # check all started
     """
@@ -41,20 +44,19 @@ def scenario():
     s = s.filter(F('term', at_message='starting'))
     s.aggs.bucket('by_guid', 'terms', field='guid', size=0)
     response = s.execute()
-    pprint(response)
+    # pprint(response)
 
     num_started = len(response.aggregations.by_guid.buckets)
     num_started_expected = len(clients)
 
-    # assert response.hits.total = num_started_expected
-
     if not num_started == num_started_expected:
-        print 'FAIL: only %d (of %d) clients logged "starting"' % (num_started, num_started_expected)
+        print 'FAIL: only %d (of %d) clients started' % (num_started, num_started_expected)
         return False
-    print 'PASS: correct clients started log events'
+    print 'PASS: all clients started logging'
     for tag in response.aggregations.by_guid.buckets:
         # print(tag.key, tag.doc_count)
         if not tag.doc_count == 1:
+            print 'FAIL: some clients started more than once'
             return False
     print 'PASS: all clients started just once'
 
@@ -73,24 +75,36 @@ def scenario():
     s = s.filter(F('term', at_message='p2p.connected'))
     s.aggs.bucket('by_guid', 'terms', field='guid', size=0)
     response = s.execute()
-    if not len(response.aggregations.by_guid.buckets) == len(clients):
+   
+    num_connected = len(response.aggregations.by_guid.buckets)
+    num_connected_expected = len(clients)
+    
+    if not num_connected == num_connected_expected:
+        print 'FAIL: only %d (of %d) clients connected to other nodes"' % (num_started, num_started_expected)
         return False
+    print 'PASS: all clients have at least one connection to another node'
+   
     for tag in response.aggregations.by_guid.buckets:
         # print(tag.key, tag.doc_count)
-        if not tag.doc_count == len(clients) - 1:  # connect all but self
+        num_connected = tag.doc_count
+        num_connected_expected = len(clients) - 1
+        if not num_connected == num_connected_expected: 
+            print 'FAIL: one client only connected to %d (of %d) other nodes"' % (num_started, num_started_expected)
             return False
+    print 'PASS: all clients are connected to all other nodes' 
 
-    guids = [nodeid_tool.topub(ext_id) for ext_id in clients]
+    guids = [nodeid_tool.topub(ext_id.encode('utf-8')) for ext_id in clients]
     for guid in guids:
         s = Search(client)
         s = s.filter(F('term', at_message='p2p.connected'))
         s = s.filter(F('term', guid=guid))
-    s.aggs.bucket('by_remote_id', 'terms', field='remote_id', size=0)
-    response = s.execute()
-
-    if not len(response.aggregations.by_remote_id.buckets) == len(clients) - 1:
-        return False
-
+        s = s.filter(F('term', remote_id=guid))
+        response = s.execute()
+        # pprint (response)
+        if not response.hits.total == 0:
+            print 'FAIL: a client is connected to itself'
+            return False
+    print 'PASS: no client is connected to itself'
     return True
 
 if __name__ == '__main__':

@@ -22,7 +22,7 @@ use_impls = ['go']
 g_boot_public_key = '829bb728a1b38d2e3bb8288d750502f7dce2ee329aaebf48ddc54e0cfc8003b3068fe57e20277ba50e42826c4d2bfcb172699e108d9e90b3339f8b6589449faf'
 
 docker_run_args = {}
-docker_run_args['go'] = '-port=30000 -loglevel=5 ' \
+docker_run_args['go'] = '-port=30000 -loglevel=1000 -logformat=raw ' \
     '-bootnodes=enode://{bootstrap_public_key}@{bootstrap_ip}:30303 ' \
     '-maxpeer={req_num_peers} ' \
     '-nodekeyhex={privkey}'

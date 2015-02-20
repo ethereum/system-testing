@@ -2,6 +2,9 @@
 # the system-testing source repo will be cloned to this destionation
 repo_path: /home/ubuntu/git
 
+# container ids are composed strings: <base_string>_<impl>_<number>
+docker_container_base_string: docker_container
+
 docker_image: 
   go:     ethereum/client-go
   python: sveneh/pyethereum-develop

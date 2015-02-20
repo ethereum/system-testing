@@ -4,21 +4,21 @@
 
 - name: Stop go client docker instances
   # ansible docker does not support stop by container name, only by image name. Stupid.
-  shell: docker stop {{ docker_container_id['go'] }} 
+  shell: docker stop {{ docker_container_base_string ~ '_go' }} 
   ignore_errors: true  
   tags:
     - go
 
 - name: Persist state of stopped go client
   # ansible docker module does not support this ...
-  shell: docker commit {{ docker_container_id['go'] }} {{ g_docker_image['go'] }}
+  shell: docker commit {{ docker_container_base_string ~ '_go' }} {{ g_docker_image['go'] }}
   ignore_errors: true  
   tags:
     - go
 
 - name: Stop go docker log forwarding
   # there is no Ansible API to stop async tasks, unfortunately.
-  shell: pkill --parent $(pgrep --full "docker logs.*{{ docker_container_id['go'] }}.*teees")
+  shell: pkill --parent $(pgrep --full "docker logs.*{{ docker_container_base_string ~ '_go' }}.*teees")
   # pkill gives -15 return code, don't know why. Ignore it
   failed_when: false 
   tags:
@@ -26,21 +26,21 @@
 
 - name: Stop python client docker instances
   # ansible docker does not support stop by container name, only by image name. Stupid.
-  shell: docker stop {{ docker_container_id['python'] }} 
+  shell: docker stop {{ docker_container_base_string ~ '_python' }} 
   ignore_errors: true  
   tags:
     - python
 
 - name: Persist state of stopped python client
   # ansible docker module does not support this ...
-  shell: docker commit {{ docker_container_id['python'] }} {{ g_docker_image['python'] }}
+  shell: docker commit {{ docker_container_base_string ~ '_python' }} {{ g_docker_image['python'] }}
   ignore_errors: true  
   tags:
     - python
 
 - name: Stop python docker log forwarding
   # there is no Ansible API to stop async tasks, unfortunately.
-  shell: pkill --parent $(pgrep --full "docker logs.*{{ docker_container_id['python'] }}.*teees")
+  shell: pkill --parent $(pgrep --full "docker logs.*{{ docker_container_base_string ~ '_python' }}.*teees")
   # pkill gives -15 return code, don't know why. Ignore it
   failed_when: false 
   tags:

@@ -1,11 +1,11 @@
 ---
 # this will only work when missing parameters are injected into the inventory file.
-# TODO: run all clients in a loop
+# TODO: run all clients in a loo
 
 - name: start go client with parameters from inventory file 
   docker: 
       image:    "{{ g_docker_image['go'] }}"
-      name:     "{{ docker_container_id['go'] }}"     
+      name:     "{{ docker_container_base_string ~ '_go' }}"     
       expose:   
         - 8545
         - 30000/udp
@@ -21,7 +21,7 @@
 - name: start python client with parameters from inventory file 
   docker: 
       image:    "{{ g_docker_image['python'] }}"
-      name:     "{{ docker_container_id['python'] }}"     
+      name:     "{{ docker_container_base_string ~ '_python' }}"
       expose:   ["30203", "30303"]
       ports:    ["22000:30203", "32000:30303"] 
       command: "{{ docker_run_args['python'] }}"
@@ -32,7 +32,7 @@
 - name: ensure the go clients runs, check cmd-line parameters if this fails
   shell: docker ps 
   register: docker_ps_out
-  failed_when: not docker_container_id['go'] in docker_ps_out.stdout
+  failed_when: not docker_container_base_string ~ "_go" in docker_ps_out.stdout
   tags: 
     - go
 
@@ -40,7 +40,7 @@
 - name: ensure the python clients runs, check cmd-line parameters if this fails
   shell: docker ps 
   register: docker_ps_out
-  failed_when: not docker_container_id['python'] in docker_ps_out.stdout
+  failed_when: not docker_container_base_string ~ '_python' in docker_ps_out.stdout
   tags: 
     - python
 
@@ -49,7 +49,7 @@
   async: 86400
   poll: 0
   # again, ansible docker module does not support logs
-  shell: docker logs --follow=true {{ docker_container_id['go'] }} 2>&1 | {{ repo_path }}/logging/teees.py {{ docker_tee_args['go'] }} 
+  shell: docker logs --follow=true {{ docker_container_base_string ~ '_go' }} 2>&1 | {{ repo_path }}/logging/teees.py {{ docker_tee_args['go'] }} 
   register: log_runner_go
   tags:
     - go
@@ -62,7 +62,7 @@
 - name: Forward python logfiles with parameters from inventory file
   async: 86400
   poll: 0
-  shell: docker logs --follow=true {{ docker_container_id['python'] }} 2>&1 | {{ repo_path }}/logging/teees.py {{ docker_tee_args['python'] }} 
+  shell: docker logs --follow=true {{ docker_container_base_string ~ '_python' }} 2>&1 | {{ repo_path }}/logging/teees.py {{ docker_tee_args['python'] }} 
   register: log_runner_python
   tags: 
     - python

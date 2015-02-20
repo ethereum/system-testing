@@ -1,0 +1,8 @@
+---
+- name: Elarch reset
+  hosts: localhost
+  gather_facts: false
+  
+  tasks:
+    - include: roles/elarch/tasks/reset.yml
+
