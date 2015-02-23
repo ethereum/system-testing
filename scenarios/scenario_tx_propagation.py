@@ -7,7 +7,10 @@ import random
 import time
 import sys
 
-
+"""
+use json rpc
+curl -X POST --data '{"jsonrpc":"2.0","method":"eth_transact","params":[{"to":"0x12312312", value: "0x00...123"}],"id":1}' http://localhost:8080
+"""
 max_time_to_reach_consensus = 10
 
 

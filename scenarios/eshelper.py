@@ -15,7 +15,7 @@ F = lambda *args, **kargs: _F(*args, **at_kargs(kargs))
 
 # from base import Inventory
 es_endpoint = '%s:9200' % Inventory().es
-# es_endpoint = '54.153.13.89:9200'  # FIXME speedup hack
+#es_endpoint = '54.152.5.133:9200'  # FIXME speedup hack
 client = Elasticsearch(es_endpoint)
 
 
@@ -28,6 +28,18 @@ def time_range_filter(offset=60):
         time.time() - offset).strftime('%Y-%m-%dT%H:%M:%S.%fZ')
     end_time = datetime.datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%S.%fZ')
     return F('range', at_timestamp=dict(gte=start_time, lte=end_time))
+
+from logstash_formatter import LogstashFormatter
+lsformatter = LogstashFormatter(defaults=dict())
+es_index_name = 'logstash-%s' % datetime.datetime.utcnow().strftime('%Y.%m.%d')
+es_doc_type = 'ethlog'
+
+
+def log(scenario_name, action, **kargs):
+    doc = dict(event='scenario.%s.%s' % (scenario_name, action))
+    doc.update(kargs)
+    doc = lsformatter.format(doc)
+    client.create(index=es_index_name, doc_type=es_doc_type, body=doc)
 
 
 def consensus(offset=10):
