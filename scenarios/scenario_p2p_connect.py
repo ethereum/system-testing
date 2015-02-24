@@ -4,17 +4,22 @@ import time
 import sys
 import nodeid_tool
 from elasticsearch_dsl import Search
-from eshelper import client, pprint, F
+from eshelper import client, pprint, F, log
 
 min_peer_count = 4
 scenario_run_time_s = 30
 
 
 def execute(clients):
+    log('p2p_connect', 'starting.clients')
     start_clients(clients=clients)
+    log('p2p_connect', 'starting.clients.done')
     print 'let it run for %d secs...' % scenario_run_time_s
     time.sleep(scenario_run_time_s)
+    log('p2p_connect', 'stopping.clients')
     stop_clients(clients=clients)
+    log('p2p_connect', 'stopping.clients.done')
+
 
 def scenario():
     """
@@ -24,6 +29,8 @@ def scenario():
 
     @return: bool(consensous of all)
     """
+    log('p2p_connect', 'started')
+
     inventory = Inventory()
     clients = inventory.clients
 
