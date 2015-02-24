@@ -52,7 +52,6 @@ def fetch(session):
                          F('term', at_message='p2p.connected')])
     s = s.filter('range', **{'@timestamp': dict(gte=session['start'], lte=session['stop'])})
     s = s.fields(['@fields.remote_id', 'guid', '@message', '@timestamp'])
-    # FIXME add filter for time range
     s = s[0:100000]
     #s = s[0:10]
     s = s.sort('@timestamp')
