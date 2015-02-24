@@ -1,6 +1,9 @@
 --- 
 # these are variables needed in multiple places in the playbooks. They are all name-space'd with g_lobal
 
+# number of AWS instances to provision
+g_total_no_hosts: 5
+
 # the docker images we use for client
 g_docker_image: 
   go:     ethereum/client-go

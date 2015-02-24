@@ -1,6 +1,6 @@
 ---
 - name: Terminate all client instances except the log server
-  hosts: security_group_system-testing:!tag_Name_elarch # this is provided by ec2.py
+  hosts: security_group_system-testing:!tag_Name_ST-elarch # this is provided by ec2.py
   remote_user: ubuntu 
   gather_facts: false
   roles:

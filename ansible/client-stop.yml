@@ -1,7 +1,6 @@
 ---
 - name: Stop a client
   hosts: client_stop_group
-  #hosts: tag_Name_client-05
   remote_user: ubuntu
   gather_facts: false
   roles:

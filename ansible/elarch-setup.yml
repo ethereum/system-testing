@@ -1,6 +1,6 @@
 ---
 - name: Start elastic search node 
-  hosts: tag_Name_elarch 
+  hosts: tag_Name_ST-elarch 
   remote_user: ubuntu # key is defined in ansible.cfg 
   gather_facts: false
   roles:

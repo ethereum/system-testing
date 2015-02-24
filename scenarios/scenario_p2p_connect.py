@@ -3,11 +3,11 @@ from clients import start_clients, stop_clients
 import time
 import sys
 import nodeid_tool
-
-scenario_run_time_s = 30
 from elasticsearch_dsl import Search
 from eshelper import client, pprint, F
 
+min_peer_count = 4
+scenario_run_time_s = 30
 
 
 def execute(clients):
@@ -27,7 +27,7 @@ def scenario():
     inventory = Inventory()
     clients = inventory.clients
 
-    execute(clients)
+    # execute(clients)
 
     # check all started
     """
@@ -85,11 +85,10 @@ def scenario():
     for tag in response.aggregations.by_guid.buckets:
         # print(tag.key, tag.doc_count)
         num_connected = tag.doc_count
-        num_connected_expected = len(clients) - 1
-        if not num_connected == num_connected_expected: 
-            print 'FAIL: one client only connected to %d (of %d) other nodes"' % (num_started, num_started_expected)
+        if not num_connected >= min_peer_count:
+            print 'FAIL: one client only connected to %d (of %d) other nodes"' % (num_connected, min_peer_count)
             return False
-    print 'PASS: all clients are connected to all other nodes' 
+    print 'PASS: all clients are connected at least to %d other nodes' % min_peer_count
 
     guids = [nodeid_tool.topub(ext_id.encode('utf-8')) for ext_id in clients]
     for guid in guids:

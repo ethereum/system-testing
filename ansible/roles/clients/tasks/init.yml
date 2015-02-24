@@ -7,7 +7,7 @@
       ports:    ["20000:30203", "30000:30303"] 
       
       # parameters given to client 
-      command: -loglevel=5 -seednode={{ groups['tag_Name_boot'][0] }}:30303 -maxpeer={{ dbg_req_num_peers }}
+      command: -loglevel=5 -seednode={{ groups['tag_Name_ST-boot'][0] }}:30303 -maxpeer={{ dbg_req_num_peers }}
   tags:
     - go
 
@@ -19,7 +19,7 @@
       ports:    ["22000:30203", "32000:30303"] 
       
       # parameters given to client 
-      command: --logging :debug --log_json 1 --remote {{ groups['tag_Name_boot'][0] }} --port 30303 --mining {{ dbg_mining_cpu_percentage }} --peers {{ dbg_req_num_peers }}
+      command: --logging :debug --log_json 1 --remote {{ groups['tag_Name_ST-boot'][0] }} --port 30303 --mining {{ dbg_mining_cpu_percentage }} --peers {{ dbg_req_num_peers }}
   tags:
     - python
 
@@ -29,7 +29,7 @@
   poll: 0
   # again, ansible docker module does not support logs
   # pyethereum wrongly logs to stderr
-  shell: docker logs --follow=true {{ dbg_container_id }} 2>&1 | {{ repo_path }}/logging/teees.py {{ groups['tag_Name_elarch'][0]}}
+  shell: docker logs --follow=true {{ dbg_container_id }} 2>&1 | {{ repo_path }}/logging/teees.py {{ groups['tag_Name_ST-elarch'][0]}}
   register: log_runner
 
 - name: verify previous task

@@ -61,10 +61,10 @@ class Inventory(object):
     def __init__(self):
         inventory = self.inventory = ec2.inventory()
         self.instances = dict((k, v[0]) for k, v in inventory.items() if k.startswith('tag_Name_'))
-        self.boot = self.instances['tag_Name_boot']
-        self.es = self.instances['tag_Name_elarch']
+        self.boot = self.instances['tag_Name_ST-boot']
+        self.es = self.instances['tag_Name_ST-elarch']
         self.clients = OrderedDict(sorted((k, v) for k, v in self.instances.items()
-                                          if k.startswith('tag_Name_client-')))
+                                          if k.startswith('tag_Name_ST-host-')))
         self.roles = dict((k, v) for k, v in inventory.items() if k.startswith('tag_Role_'))
 
 
@@ -76,7 +76,7 @@ class Scenario(object):
         self.inventory = Inventory()
 
     def client_num_to_name(num):
-        return 'client-%0.2d' % (num + 1)  # FIXME 100 limit and start at zero
+        return 'host-%0.5d' % (num)  
 
     def client_num_to_host(num):
         return self.inventory.clients[self.client_num_to_name(num)]
@@ -104,9 +104,7 @@ class Scenario(object):
 
 if __name__ == '__main__':
     inventory = Inventory()
-    print 1
-    print rrun(inventory.clients['client-03'], 'docker ps')
-    print 2
+    # print rrun(inventory.clients['client-03'], 'docker ps')
     # print ansible_run('tag_Name_client-02', 'command', 'docker ps')
     print 'bootstrapping', inventory.boot
     print 'elasticsearch', inventory.es

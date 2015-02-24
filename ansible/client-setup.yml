@@ -1,6 +1,6 @@
 ---
 - name: Setup client nodes
-  hosts: tag_Role_client
+  hosts: tag_Role_ST-client-host
   remote_user: ubuntu
   gather_facts: false
   roles:

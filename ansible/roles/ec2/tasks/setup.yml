@@ -59,31 +59,29 @@
     region: "{{ ec2_region }}"
     key_name: "{{ ec2_keypair }}"
     instance_tags:
-        Name: boot
-        Role: bootstrap
+        Name: ST-boot
+        Role: ST-bootstrap
     count_tag: 
-        Name: boot 
+        Name: ST-boot 
     exact_count: 1
     # WARNING: Enabling install via user_data will interfere with following ansible scripts. DO NOT USE! 
     # user_data: "#include https://get.docker.com"
 
-- name: start new ec2 instances for client nodes
+- name: start new ec2 instances for client hosts
   ec2:  
     group: "{{ ec2_security_group }}"
     instance_type: "{{ ec2_instance_type }}" 
     image: "{{ ec2_image[ec2_region] }}" 
-    wait: true 
+    wait: false 
     region: "{{ ec2_region }}"
     key_name: "{{ ec2_keypair }}"
     instance_tags:
         Name: "{{ item }}"
-        Role: client
-        Impl: python
+        Role: ST-client-host
     count_tag: # exactly one instance with the given name
         Name: "{{ item }}"
     exact_count: 1
-  with_sequence: start=1 end={{ total_no_clients }} format=client-%02x
-
+  with_sequence: start=0 end={{ g_total_no_hosts - 1 }} format=ST-host-%05u
 
 - name: start ec2 instance for elasticsearch server 
   ec2:  
@@ -94,8 +92,10 @@
     region: "{{ ec2_region }}"
     key_name: "{{ ec2_keypair }}"
     instance_tags:
-        Name: elarch
-        Role: logserver
+        Name: ST-elarch
+        Role: ST-logserver
     count_tag: 
-        Name: elarch 
+        Name: ST-elarch 
     exact_count: 1
+
+- debug: var=cec2

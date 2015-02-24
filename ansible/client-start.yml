@@ -1,7 +1,6 @@
 ---
 - name: Starts a client with parameters supplied from inventory file
   hosts: client_start_group
-  # hosts: tag_Name_client-05 
   remote_user: ubuntu
   gather_facts: false
   roles:

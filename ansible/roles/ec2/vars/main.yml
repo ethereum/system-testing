@@ -13,5 +13,3 @@ ec2_keypair:            system-testing
 
 # limit access to AWS to these clients in CDIR notation
 ec2_ip_access_range:    0.0.0.0/0
-
-total_no_clients:   5

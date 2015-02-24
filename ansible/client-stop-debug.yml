@@ -1,8 +1,8 @@
 ---
 # this is just for testing.
 - name: Ansible-only testing scenario
-  hosts: tag_Name_client-01
-# hosts: tag_Role_client
+  hosts: tag_Name_ST-host-00001
+# hosts: tag_Role_ST-client-host
   remote_user: ubuntu
   gather_facts: false
   roles:

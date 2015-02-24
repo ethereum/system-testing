@@ -1,8 +1,8 @@
 ---
 # this is just for testing.
 - name: Ansible-only testing scenario
-  hosts: tag_Name_client-01
-# hosts: tag_Role_client
+  hosts: tag_Name_ST-host-00001
+# hosts: tag_Role_ST-host-client
   remote_user: ubuntu
   gather_facts: false
   roles:
@@ -21,9 +21,9 @@
           python: container_python
 
         docker_run_args:
-          go:     -loglevel=5 -port=30000 -bootnodes=enode://{{ g_boot_public_key }}@{{ groups['tag_Name_boot'][0] }}:30303 -maxpeer={{ dbg_req_num_peers }}     
-          python: --logging :debug --log_json 1 --remote {{ groups['tag_Name_boot'][0] }} --port 30303 --mining {{ dbg_mining_cpu_percentage }} --peers {{ dbg_req_num_peers }}
+          go:     -loglevel=5 -port=30000 -bootnodes=enode://{{ g_boot_public_key }}@{{ groups['tag_Name_ST-boot'][0] }}:30303 -maxpeer={{ dbg_req_num_peers }}     
+          python: --logging :debug --log_json 1 --remote {{ groups['tag_Name_ST-boot'][0] }} --port 30303 --mining {{ dbg_mining_cpu_percentage }} --peers {{ dbg_req_num_peers }}
 
         docker_tee_args:
-          go:     "{{ groups['tag_Name_elarch'][0]}}"
-          python: "{{ groups['tag_Name_elarch'][0]}}"
+          go:     "{{ groups['tag_Name_ST-elarch'][0]}}"
+          python: "{{ groups['tag_Name_ST-elarch'][0]}}"
