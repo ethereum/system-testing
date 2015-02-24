@@ -53,8 +53,7 @@ def analyze(r):
         # print ts
 
         event = message.split('.')[1]
-        events.append((event, node[:8], remote[:8]))
-
+        events.append((event, node, remote))
     # HACK, look for last connect
     for i, (event, n, r) in enumerate(reversed(events)):
         if event == 'connected':
@@ -82,15 +81,18 @@ def visualize(graph):
     # G = nx.balanced_tree(3, 5)
     G = nx.Graph()
     for node, remotes in g.items():
-        print node[:8]
+        #print node[:8]
         for r in set(remotes):
-            print '\t', r[:8]
+            #print '\t', r[:8]
             G.add_edge(node, r)
 #    print 'estrada_index', nx.estrada_index(G)
 #    print 'eigenvector_centrality', nx.eigenvector_centrality(G)
 #    print 'degree_centrality', nx.degree_centrality(G)
 #    print 'communicability', nx.communicability(G)
-    pos = nx.graphviz_layout(G, prog='twopi', args='')
+    print 'diameter', nx.diameter(G)
+    print 'avg shortest path', nx.average_shortest_path_length(G)
+    #pos = nx.graphviz_layout(G, prog='twopi', args='')
+    pos = nx.spring_layout(G)
     plt.figure(figsize=(8, 8))
     nx.draw(G, pos, node_size=20, alpha=0.5, node_color="blue", with_labels=False)
     plt.axis('equal')
