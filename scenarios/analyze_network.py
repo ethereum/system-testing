@@ -3,6 +3,7 @@ from elasticsearch_dsl import Search
 from elasticsearch_dsl import F as _F
 from elasticsearch import Elasticsearch
 from collections import OrderedDict
+from pyethereum.utils import sha3, big_endian_to_int
 
 def at_kargs(kargs):
     return dict([(k.replace('at_', '@'), v) for k, v in kargs.items()])
@@ -42,7 +43,7 @@ def session_times():
         stop = events.pop()
         start = events.pop()
         sessions.append(dict([start, stop]))
-    return sessions
+    return list(reversed(sessions))
 
 
 def fetch(session):
@@ -79,10 +80,20 @@ def analyze(r):
         else:
             assert event == 'disconnected', event
             # print 'remove'
-            graph[node].remove(remote)
+            try:
+                graph[node].remove(remote)
+            except ValueError:
+                print 'WARN: disconnect for missing connect'
 
     return graph
 
+
+def weight(a, b):
+    # calc distance
+    max_distance = 2 ** 32
+    distance = big_endian_to_int(sha3(a.decode('hex'))) ^ big_endian_to_int(sha3(b.decode('hex')))
+    # same node is weight == 1
+    return 1 - distance / max_distance
 
 def visualize(graph):
     import networkx as nx
@@ -94,7 +105,8 @@ def visualize(graph):
         #print node[:8]
         for r in set(remotes):
             #print '\t', r[:8]
-            G.add_edge(node, r)
+            G.add_edge(node, r, weight=weight(node, r))
+            # G.add_edge(node, r)
 
 #    print 'estrada_index', nx.estrada_index(G)
 #    print 'eigenvector_centrality', nx.eigenvector_centrality(G)
@@ -107,11 +119,12 @@ def visualize(graph):
     metrics['min_peers'] = min(num_peers)
     metrics['avg_peers'] = sum(num_peers) / len(num_peers)
     metrics['diameter '] = nx.diameter(G)
+    metrics['edge_connectivity'] = nx.edge_connectivity(G)
     metrics['avg_shortest_path'] = nx.average_shortest_path_length(G)
 
     text = ''
     for k, v in metrics.items():
-        text += '%s:\t%.2f\n' % (k, v)
+        text += '%s: %.2f\n' % (k, v)
 
     # pos = nx.graphviz_layout(G, prog='twopi', args='')
     pos = nx.spring_layout(G)
