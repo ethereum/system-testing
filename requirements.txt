@@ -1,3 +1,4 @@
+python-jsonrpc
 addict
 docopt
 pysha3
@@ -6,3 +7,4 @@ ansible
 argparse
 docker-py
 elasticsearch
+elasticsearch-dsl
