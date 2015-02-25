@@ -34,7 +34,7 @@ teees_args = '{elarch_ip} guid,{pubkey_hex}'
 mining_cpu_percentage = 50
 req_num_peers = 4
 
-ansible_args = ['-u', 'ubuntu', '--private-key=../ansible/system-testing.pem', '-vv']
+ansible_args = ['-u', 'ubuntu', '--private-key=../ansible/system-testing.pem'] #add -vv for debug output
 
 
 def mk_inventory_executable(inventory):
@@ -60,7 +60,7 @@ def exec_playbook(inventory, playbook):
         print 'success'
 
 
-def start_clients(clients=[]):
+def start_clients(clients=[],maxnumpeer=4):
     """
     start all clients with a custom config (nodeid)
     """
@@ -81,13 +81,13 @@ def start_clients(clients=[]):
         d = dict(hosts=inventory.inventory[client], vars=dict())
         dra_go = docker_run_args['go'].format(bootstrap_public_key=g_boot_public_key,
                                               bootstrap_ip=inventory.boot,
-                                              req_num_peers=req_num_peers,
+                                              req_num_peers=maxnumpeer,
                                               privkey=privkey
                                               )
 
         dra_python = docker_run_args['python'].format(bootstrap_ip=inventory.boot,
                                                       mining_cpu_percentage=mining_cpu_percentage,
-                                                      req_num_peers=req_num_peers,
+                                                      req_num_peers=maxnumpeer,
                                                       coinbase=coinbase)
         d['vars']['docker_run_args'] = {}
         d['vars']['docker_run_args']['go'] = dra_go

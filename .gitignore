@@ -6,6 +6,7 @@ venv/
 *.pyc
 *.sw?
 *.bak
+*.png
 *~
 roles/aws/tasks/add_host.yml
 roles/aws/tasks/check_ssh.yml

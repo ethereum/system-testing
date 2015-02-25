@@ -140,6 +140,8 @@ if __name__ == '__main__':
     sessions = session_times()
     print 'sessions', sessions
     SESSION = 0  # 0 == latest session
+    if SESSION != 0:
+        print 'SESSION parameter modified! Not analyzing the last session'
     if sessions:
         r = fetch(sessions[SESSION])
         g = analyze(r)

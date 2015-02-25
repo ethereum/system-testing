@@ -1,7 +1,7 @@
 ---
 # this is just for testing.
 - name: Ansible-only testing scenario
-  hosts: tag_Name_ST-host-00001
+  hosts: tag_Name_ST-host-00000
 # hosts: tag_Role_ST-host-client
   remote_user: ubuntu
   gather_facts: false
@@ -16,10 +16,6 @@
         dbg_req_num_peers: 3
         dbg_mining_cpu_percentage: 10
         
-        docker_container_id:
-          go:     container_go
-          python: container_python
-
         docker_run_args:
           go:     -loglevel=5 -port=30000 -bootnodes=enode://{{ g_boot_public_key }}@{{ groups['tag_Name_ST-boot'][0] }}:30303 -maxpeer={{ dbg_req_num_peers }}     
           python: --logging :debug --log_json 1 --remote {{ groups['tag_Name_ST-boot'][0] }} --port 30303 --mining {{ dbg_mining_cpu_percentage }} --peers {{ dbg_req_num_peers }}

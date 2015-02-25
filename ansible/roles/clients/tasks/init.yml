@@ -1,7 +1,7 @@
 ---
 - name: initial start of ethereum go client, connection to bootstrapping node
   docker: 
-      image:    "{{ g_docker_image['go'] }}"
+      image:    "{{ g_docker_work_image['go'] }}"
       name:     "{{ dbg_container_id }}_go"     
       expose:   ["8080", "30303"]
       ports:    ["20000:30203", "30000:30303"] 
@@ -13,7 +13,7 @@
 
 - name: initial start of ethereum python client, connection to bootstrapping node
   docker: 
-      image:    "{{ g_docker_image['python'] }}"
+      image:    "{{ g_docker_work_image['python'] }}"
       name:     "{{ dbg_container_id }}_python"     
       expose:   ["30203", "30303"]
       ports:    ["22000:30203", "32000:30303"] 

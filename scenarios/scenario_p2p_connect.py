@@ -6,13 +6,13 @@ import nodeid_tool
 from elasticsearch_dsl import Search
 from eshelper import client, pprint, F, log
 
-min_peer_count = 4
-scenario_run_time_s = 30
+min_peer_count = 2
+scenario_run_time_s = 5*60
 
 
 def execute(clients):
     log('p2p_connect', 'starting.clients')
-    start_clients(clients=clients)
+    start_clients(clients=clients, maxnumpeer=min_peer_count)
     log('p2p_connect', 'starting.clients.done')
     print 'let it run for %d secs...' % scenario_run_time_s
     time.sleep(scenario_run_time_s)
@@ -34,7 +34,7 @@ def scenario():
     inventory = Inventory()
     clients = inventory.clients
 
-    # execute(clients)
+    execute(clients)
 
     # check all started
     """
@@ -85,7 +85,7 @@ def scenario():
     num_connected_expected = len(clients)
     
     if not num_connected == num_connected_expected:
-        print 'FAIL: only %d (of %d) clients connected to other nodes"' % (num_started, num_started_expected)
+        print 'FAIL: only %d (of %d) clients connected to other nodes' % (num_connected, num_connected_expected)
         return False
     print 'PASS: all clients have at least one connection to another node'
    

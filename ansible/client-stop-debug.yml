@@ -1,7 +1,7 @@
 ---
 # this is just for testing.
 - name: Ansible-only testing scenario
-  hosts: tag_Name_ST-host-00001
+  hosts: tag_Name_ST-host-00000
 # hosts: tag_Role_ST-client-host
   remote_user: ubuntu
   gather_facts: false
@@ -10,9 +10,3 @@
   
   tasks:
     - include: roles/clients/tasks/stop.yml
-      vars:
-        
-        # these are normally set from the python controller
-        docker_container_id:
-          go:     container_go
-          python: container_python
