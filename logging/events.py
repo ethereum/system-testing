@@ -61,8 +61,11 @@ class P2PEvent(Event):
 
 # P2PEvent('p2p.connecting', remote_addr=client_addr)
 P2PEvent('p2p.connected',
-         comment='as soon as a successful connetion to another node is established',
+         comment='as soon as a successful connection to another node is established',
          remote_addr=client_addr, remote_version_string=client_impl)
+P2PEvent('p2p.disconnected',
+         comment='as soon as a disconnection from another node happened',
+         remote_addr=client_addr)
 # P2PEvent('p2p.handshaked', remote_capabilities=[])
 # P2PEvent('p2p.disconnected')
 # P2PEvent('p2p.disconnecting', reason='')
