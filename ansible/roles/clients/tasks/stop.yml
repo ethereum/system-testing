@@ -2,6 +2,15 @@
 # this will only work when missing parameters are injected into the inventory file.
 # TODO do all in a loop
 
+- name: Stop go docker log forwarding
+  # there is no Ansible API to stop async tasks, unfortunately.
+  # when run through ansible, needs --oldest option, as otherwise the ansible pgreg runner is also matched
+  shell: pkill --parent $(pgrep --full --oldest "docker logs.*{{ docker_container_base_string ~ '_go' }}.*teees")
+  # pkill gives -15 return code, don't know why. Ignore it
+  failed_when: false 
+  tags:
+    - go
+
 - name: Stop go client docker instances
   # ansible docker does not support stop by container name, only by image name. Stupid.
   shell: docker stop {{ docker_container_base_string ~ '_go' }} 
@@ -16,18 +25,28 @@
   tags:
     - go
 
-- name: Stop go docker log forwarding
-  # there is no Ansible API to stop async tasks, unfortunately.
-  shell: pkill --parent $(pgrep --full "docker logs.*{{ docker_container_base_string ~ '_go' }}.*teees")
-  # pkill gives -15 return code, don't know why. Ignore it
-  failed_when: false 
+- name: rm unused go container
+  # ansible docker module does not support this ...
+  shell: docker rm {{ docker_container_base_string ~ '_go' }} 
+  ignore_errors: true  
   tags:
     - go
+
+
+
 
 - name: Stop python client docker instances
   # ansible docker does not support stop by container name, only by image name. Stupid.
   shell: docker stop {{ docker_container_base_string ~ '_python' }} 
   ignore_errors: true  
+  tags:
+    - python
+
+- name: Stop python docker log forwarding
+  # there is no Ansible API to stop async tasks, unfortunately.
+  shell: pkill --parent $(pgrep --full --oldest "docker logs.*{{ docker_container_base_string ~ '_python' }}.*teees")
+  # pkill gives -15 return code, don't know why. Ignore it
+  failed_when: false 
   tags:
     - python
 
@@ -38,10 +57,10 @@
   tags:
     - python
 
-- name: Stop python docker log forwarding
-  # there is no Ansible API to stop async tasks, unfortunately.
-  shell: pkill --parent $(pgrep --full "docker logs.*{{ docker_container_base_string ~ '_python' }}.*teees")
-  # pkill gives -15 return code, don't know why. Ignore it
-  failed_when: false 
+- name: rm unused python container
+  # ansible docker module does not support this ...
+  shell: docker rm {{ docker_container_base_string ~ '_python' }} 
+  ignore_errors: true  
   tags:
     - python
+

@@ -12,6 +12,10 @@
     - python 
   ignore_errors: true
 
+- name: remove all leftover untagged images from host
+  shell: docker rmi -f $(docker images | grep "<none>" | awk "{print \$3}")
+  ignore_errors: true
+
 - name: re-create the work image
   sudo: true
   shell: docker tag $(docker history --quiet {{ g_docker_clean_image[item] }} | head --lines=1) {{ g_docker_work_image[item] }}
