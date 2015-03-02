@@ -12,7 +12,7 @@ import subprocess
 import tempfile
 import stat
 import os
-
+from eshelper import log_scenario
 key_file = '../ansible/system-testing.pem'
 
 use_impls = ['go']
@@ -25,7 +25,8 @@ docker_run_args = {}
 docker_run_args['go'] = '-port=30000 -rpcaddr=0.0.0.0 -loglevel=1000 -logformat=raw ' \
     '-bootnodes=enode://{bootstrap_public_key}@{bootstrap_ip}:30303 ' \
     '-maxpeer={req_num_peers} ' \
-    '-nodekeyhex={privkey}'
+    '-nodekeyhex={privkey} ' \
+    '-mine=true'
 
 docker_run_args['python'] = '--logging :debug --log_json 1 --remote {bootstrap_ip} --port 30303 ' \
     '--mining {mining_cpu_percentage} --peers {req_num_peers} --address {coinbase}'
@@ -33,8 +34,8 @@ teees_args = '{elarch_ip} guid,{pubkey_hex}'
 
 mining_cpu_percentage = 50
 
-ansible_args = ['-u', 'ubuntu', '--private-key=../ansible/system-testing.pem', '-vv'] #add -vv for debug output
-
+# add -vv for debug output
+ansible_args = ['-u', 'ubuntu', '--private-key=../ansible/system-testing.pem', '-vv']
 
 
 def mk_inventory_executable(inventory):
@@ -60,7 +61,7 @@ def exec_playbook(inventory, playbook):
         print 'success'
 
 
-def start_clients(clients=[],maxnumpeer=7):
+def start_clients(clients=[],  maxnumpeer=7):
     """
     start all clients with a custom config (nodeid)
     """
@@ -129,10 +130,14 @@ if __name__ == '__main__':
     # ec2.py peeks into args, so delete passing-variables-on-the-command-line
     sys.argv = sys.argv[:1]
     if 'start' in args:
+        log_scenario(name='cmd_line', event='start_clients')
         # start_clients()
         start_clients([u'tag_Name_ST-host-00000'])
+        log_scenario(name='cmd_line', event='start_clients.done')
     elif 'stop' in args:
+        log_scenario(name='cmd_line', event='stop_clients')
         # stop_clients()
         stop_clients([u'tag_Name_ST-host-00000'])
+        log_scenario(name='cmd_line', event='stop_clients')
     else:
         print 'usage:%s start|stop' % sys.argv[0]
