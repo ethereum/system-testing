@@ -130,6 +130,11 @@ try:
 except ImportError:
     import simplejson as json
 
+# remove cmd args if this script is not meant
+_cache_argv = sys.argv[:]
+if not 'ec2' in sys.argv[0]:
+    sys.argv = sys.argv[:1]
+
 
 class Ec2Inventory(object):
     @classmethod
@@ -294,6 +299,7 @@ class Ec2Inventory(object):
                            help='Force refresh of cache by making API requests to EC2 (default: False - use cache files)')
         self.args = parser.parse_args()
 
+        sys.argv = _cache_argv
 
     def do_api_calls_update_cache(self):
         ''' Do API calls to each region, and save data in cache files '''
