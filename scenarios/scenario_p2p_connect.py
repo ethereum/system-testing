@@ -4,21 +4,24 @@ import time
 import sys
 import nodeid_tool
 from elasticsearch_dsl import Search
-from eshelper import client, pprint, F, log
+from eshelper import client, pprint, F, log_scenario
 
 min_peer_count = 2
-scenario_run_time_s = 5*60
+scenario_run_time_s = 5 * 60
 
 
 def execute(clients):
-    log('p2p_connect', 'starting.clients')
+    log_scenario('p2p_connect', 'starting.clients')
     start_clients(clients=clients, maxnumpeer=min_peer_count)
-    log('p2p_connect', 'starting.clients.done')
+
+    log_scenario('p2p_connect', 'starting.clients.done')
     print 'let it run for %d secs...' % scenario_run_time_s
     time.sleep(scenario_run_time_s)
-    log('p2p_connect', 'stopping.clients')
+
+    log_scenario('p2p_connect', 'stopping.clients')
     stop_clients(clients=clients)
-    log('p2p_connect', 'stopping.clients.done')
+
+    log_scenario('p2p_connect', 'stopping.clients.done')
 
 
 def scenario():
@@ -29,7 +32,7 @@ def scenario():
 
     @return: bool(consensous of all)
     """
-    log('p2p_connect', 'started')
+    log_scenario(name='p2p_connect', event='started')
 
     inventory = Inventory()
     clients = inventory.clients
@@ -66,34 +69,26 @@ def scenario():
     print 'PASS: all clients started just once'
 
     # check all connected
-    """
-        "p2p.connected": {
-            "remote_version_string": "Impl/OS/version, e.g. Go/Linux/0.8.2",
-            "comment": "as soon as a successful connetion to another node is established",
-            "remote_addr": "ipv4:port, e.g. 10.46.56.35:30303",
-            "remote_id": "hex128, e.g. 0123456789abcdef... exactly 128 digits",
-            "num_connections": "int, e.g. 4 - number of other nodes this client is currently connected to",
-            "ts": "YYYY-MM-DDTHH:MM:SS.SSSSSSZ"
-        }
-    """
     s = Search(client)
     s = s.filter(F('term', at_message='p2p.connected'))
     s.aggs.bucket('by_guid', 'terms', field='guid', size=0)
     response = s.execute()
-   
+
     num_connected = len(response.aggregations.by_guid.buckets)
     num_connected_expected = len(clients)
-    
+
     if not num_connected == num_connected_expected:
-        print 'FAIL: only %d (of %d) clients connected to other nodes' % (num_connected, num_connected_expected)
+        print 'FAIL: only %d (of %d) clients connected to other nodes' % \
+            (num_connected, num_connected_expected)
         return False
     print 'PASS: all clients have at least one connection to another node'
-   
+
     for tag in response.aggregations.by_guid.buckets:
         # print(tag.key, tag.doc_count)
         num_connected = tag.doc_count
         if not num_connected >= min_peer_count:
-            print 'FAIL: one client only connected to %d (of %d) other nodes"' % (num_connected, min_peer_count)
+            print 'FAIL: one client only connected to %d (of %d) other nodes"' % \
+                (num_connected, min_peer_count)
             return False
     print 'PASS: all clients are connected at least to %d other nodes' % min_peer_count
 

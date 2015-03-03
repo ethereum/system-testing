@@ -15,7 +15,7 @@ F = lambda *args, **kargs: _F(*args, **at_kargs(kargs))
 
 # from base import Inventory
 es_endpoint = '%s:9200' % Inventory().es
-#es_endpoint = '54.152.5.133:9200'  # FIXME speedup hack
+# es_endpoint = '54.152.5.133:9200'  # FIXME speedup hack
 client = Elasticsearch(es_endpoint)
 
 
@@ -35,9 +35,10 @@ es_index_name = 'logstash-%s' % datetime.datetime.utcnow().strftime('%Y.%m.%d')
 es_doc_type = 'ethlog'
 
 
-def log(scenario_name, action, **kargs):
-    doc = dict(event='scenario.%s.%s' % (scenario_name, action))
+def log_scenario(name, event, **kargs):
+    doc = dict(event='scenario.%s.%s' % (name, event))
     doc.update(kargs)
+    print doc['event'], repr(kargs) if kargs else ''
     doc = lsformatter.format(doc)
     client.create(index=es_index_name, doc_type=es_doc_type, body=doc)
 
@@ -54,7 +55,7 @@ def consensus(offset=10):
     s = s.filter(time_range_filter(offset=offset))
     # By default, the buckets are ordered by their doc_count descending
     s.aggs.bucket('by_block_hash', 'terms', field='@fields.block_hash', size=10)
-    #s = s[10:10]
+    # s = s[10:10]
     response = s.execute()
     print response
     if response:
@@ -75,7 +76,7 @@ def messages():
     s = Search(client)
     s = s.filter(time_range_filter(offset=6000))
     s.aggs.bucket('by_message', 'terms', field='@message', size=100)
-    #s = s[0:1000]
+    # s = s[0:1000]
     response = s.execute()
     for tag in response.aggregations.by_message.buckets:
         print(tag.key, tag.doc_count)
@@ -97,7 +98,7 @@ def network():
     q_send_disconnect = Q("match", at_message='p2p.sending_disconnect')
 #    q_recv_disconnect = Q("match", at_message='p2p.sending_disconnect')
     s = s.query(q_status | q_send_disconnect)
-    #s = s[0:1000]
+    # s = s[0:1000]
     response = s.execute()
     for hit in response:
         print hit
@@ -112,7 +113,7 @@ def tx_list(offset=10):
 
     """
     s = Search(client)
-    s = s.query(Q("match", at_message='eth.tx.tx_new'))
+    s = s.query(Q("match", at_message='eth.tx.received'))
     s = s.filter(time_range_filter(offset=offset))
     s = s[0:100]
     response = s.execute()
@@ -129,11 +130,11 @@ def tx_propagation(offset=10):
 
     """
     s = Search(client)
-    s = s.query(Q("match", at_message='eth.tx.tx_new'))
+    s = s.query(Q("match", at_message='eth.tx.received'))
     s = s.filter(time_range_filter(offset=offset))
     # By default, the buckets are ordered by their doc_count descending
-    s.aggs.bucket('by_tx', 'terms', field='@fields.tx', size=10)
-    #s = s[0:1000]
+    s.aggs.bucket('by_tx', 'terms', field='@fields.tx_hash', size=10)
+    # s = s[0:1000]
     response = s.execute()
     if response:
         return max(tag.doc_count for tag in response.aggregations.by_tx.buckets)
@@ -146,15 +147,6 @@ def tx_propagation(offset=10):
 """
 
 todo:
-
 delete data from clients and bootstrapping client
-
-how to seperate logs for scenarios?
-clean nodes after senarios?
-
-plan:
-    one index per scenario
-    scenario_name-yyyy-mm-dd
-    change alias to this index
 
 """

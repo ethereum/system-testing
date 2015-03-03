@@ -5,6 +5,7 @@ from elasticsearch import Elasticsearch
 from collections import OrderedDict
 from pyethereum.utils import sha3, big_endian_to_int
 
+
 def at_kargs(kargs):
     return dict([(k.replace('at_', '@'), v) for k, v in kargs.items()])
 F = lambda *args, **kargs: _F(*args, **at_kargs(kargs))
@@ -32,7 +33,7 @@ def session_times():
     s = s.sort('-@timestamp')  # desc,  we want the latest events
     response = s.execute()
 
-    events = [] # joungest to oldest, last should be a stop message
+    events = []  # joungest to oldest, last should be a stop message
     for h in response:
         msg = 'start' if h['@message'][0] == start_message else 'stop'
         ts = h['@timestamp'][0]
@@ -91,9 +92,11 @@ def analyze(r):
 def weight(a, b):
     # calc distance
     max_distance = 2 ** 32
-    distance = big_endian_to_int(sha3(a.decode('hex'))) ^ big_endian_to_int(sha3(b.decode('hex')))
+    #distance = big_endian_to_int(sha3(a.decode('hex'))) ^ big_endian_to_int(sha3(b.decode('hex')))
+    distance = big_endian_to_int(a.decode('hex')) ^ big_endian_to_int(b.decode('hex'))
     # same node is weight == 1
     return 1 - distance / max_distance
+
 
 def visualize(graph):
     import networkx as nx
@@ -102,9 +105,9 @@ def visualize(graph):
 
     G = nx.Graph()
     for node, remotes in graph.items():
-        #print node[:8]
+        # print node[:8]
         for r in set(remotes):
-            #print '\t', r[:8]
+            # print '\t', r[:8]
             G.add_edge(node, r, weight=weight(node, r))
             # G.add_edge(node, r)
 
@@ -142,11 +145,12 @@ if __name__ == '__main__':
     SESSION = 0  # 0 == latest session
     if SESSION != 0:
         print 'SESSION parameter modified! Not analyzing the last session'
+
     if sessions:
         r = fetch(sessions[SESSION])
         g = analyze(r)
         visualize(g)
-    # # pprint(g)
+    # pprint(g)
     # for node, remotes in g.items():
     #     print node[:8]
     #     assert len(remotes) == set(remotes)

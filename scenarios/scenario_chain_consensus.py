@@ -1,11 +1,11 @@
 from base import Inventory
 from clients import start_clients, stop_clients
-from eshelper import consensus
+from eshelper import consensus, log_scenario
 import random
 import time
 import sys
 
-state_durations = dict(stopped=(1, 20), running=(5, 30))
+state_durations = dict(stopped=(1, 10), running=(10, 30))
 test_time = 60
 max_time_to_reach_consensus = 10
 random.seed(42)
@@ -26,7 +26,7 @@ def mkschedule(client):
     return events
 
 
-def scenario():
+def scenario(num_scheduled_clients=2):
     """
     starts all clients
     stops, restarts clients in a random pattern
@@ -39,19 +39,26 @@ def scenario():
     inventory = Inventory()
     clients = inventory.clients
 
+    log_scenario(name='chain_consensus', event='started')
+
     # create schedule
     events = []
-    for c in clients:
+    for c in list(clients)[:num_scheduled_clients]:
         events.extend(mkschedule(c))
     events = sorted(events, key=lambda x: x['time'])
+    assert len(events)
+    print '\n'.join(repr(e) for e in events)
 
     # FIXME, reset client storage
     # use client-reset.yml playbook, needs to set docker_container_id in inventory
 
     # start-up all clients
+    log_scenario(name='p2p_connect', event='start_all_clients')
     start_clients(clients=clients)
+    log_scenario(name='p2p_connect', event='start_all_clients.done')
 
     # run events
+    log_scenario(name='p2p_connect', event='run_churn_schedule')
     elapsed = 0
     while events:
         e = events.pop(0)
@@ -63,18 +70,33 @@ def scenario():
         client = e['client']
         print elapsed, cmd.__name__, client
         cmd(clients=[client])
+    log_scenario(name='p2p_connect', event='run_churn_schedule.done')
 
     # start all clients
+    log_scenario(name='p2p_connect', event='start_all_clients_again')
     start_clients(clients=clients)
+    log_scenario(name='p2p_connect', event='start_all_clients_again.done')
 
     # let them agree on a block
+    log_scenario(name='p2p_connect', event='wait_for_consensus')
     time.sleep(max_time_to_reach_consensus)
+    log_scenario(name='p2p_connect', event='wait_for_consensus.done')
+    return check_consensus(clients)
+
+
+def check_consensus(clients):
     num_agreeing_clients = consensus(offset=max_time_to_reach_consensus)
     print '%d out of %d clients are on the same chain' % (num_agreeing_clients, len(clients))
     return num_agreeing_clients == len(clients)
 
 
+def check_consensus_only():
+    inventory = Inventory()
+    clients = inventory.clients
+    return check_consensus(clients)
+
 if __name__ == '__main__':
+    # success = check_consensus_only()
     success = scenario()
     if not success:
         sys.exit(1)
