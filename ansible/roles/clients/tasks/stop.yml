@@ -1,66 +1,53 @@
 ---
 # this will only work when missing parameters are injected into the inventory file.
-# TODO do all in a loop
 
-- name: Stop go docker log forwarding
+- name: Stop docker log forwarding
   # there is no Ansible API to stop async tasks, unfortunately.
   # when run through ansible, needs --oldest option, as otherwise the ansible pgreg runner is also matched
-  shell: pkill --parent $(pgrep --full --oldest "docker logs.*{{ docker_container_base_string ~ '_go' }}.*teees")
+  shell: pkill --parent $(pgrep --full --oldest "docker logs.*{{ docker_container_base_string ~ '_' ~ item[0] ~ '_' ~ item[1] }}.*teees")
   # pkill gives -15 return code, don't know why. Ignore it
   failed_when: false 
+  with_nested:
+    - target_client_impl
+    - target_client_no
   tags:
     - go
+    - cpp
+    - python
 
-- name: Stop go client docker instances
+- name: Stop client docker instances
   # ansible docker does not support stop by container name, only by image name. Stupid.
-  shell: docker stop {{ docker_container_base_string ~ '_go' }} 
+  shell: docker stop {{ docker_container_base_string ~ '_' ~ item[0] ~ '_' ~ item[1] }} 
   ignore_errors: true  
+  with_nested:
+    - target_client_impl
+    - target_client_no
   tags:
     - go
+    - cpp
+    - python
 
+# TODO: This only works with the first container of each implementation, needs more work images
 - name: Persist state of stopped go client
   # ansible docker module does not support this ...
-  shell: docker commit {{ docker_container_base_string ~ '_go' }} {{ g_docker_work_image['go'] }}
+  shell: docker commit {{ docker_container_base_string ~ '_' ~ item[0] ~ '_000' }} {{ g_docker_work_image[item[0]] }}
   ignore_errors: true  
+  with_nested:
+    - target_client_impl
+    - target_client_no
   tags:
     - go
+    - cpp
+    - python
 
 - name: rm unused go container
   # ansible docker module does not support this ...
-  shell: docker rm {{ docker_container_base_string ~ '_go' }} 
+  shell: docker rm {{ docker_container_base_string ~ '_' ~ item[0] ~ '_' ~ item[1] }} 
   ignore_errors: true  
+  with_nested:
+    - target_client_impl
+    - target_client_no
   tags:
     - go
-
-
-
-
-- name: Stop python client docker instances
-  # ansible docker does not support stop by container name, only by image name. Stupid.
-  shell: docker stop {{ docker_container_base_string ~ '_python' }} 
-  ignore_errors: true  
-  tags:
+    - cpp
     - python
-
-- name: Stop python docker log forwarding
-  # there is no Ansible API to stop async tasks, unfortunately.
-  shell: pkill --parent $(pgrep --full --oldest "docker logs.*{{ docker_container_base_string ~ '_python' }}.*teees")
-  # pkill gives -15 return code, don't know why. Ignore it
-  failed_when: false 
-  tags:
-    - python
-
-- name: Persist state of stopped python client
-  # ansible docker module does not support this ...
-  shell: docker commit {{ docker_container_base_string ~ '_python' }} {{ g_docker_work_image['python'] }}
-  ignore_errors: true  
-  tags:
-    - python
-
-- name: rm unused python container
-  # ansible docker module does not support this ...
-  shell: docker rm {{ docker_container_base_string ~ '_python' }} 
-  ignore_errors: true  
-  tags:
-    - python
-

@@ -5,15 +5,17 @@
   shell: docker pull {{ g_docker_clean_image[item] }} 
   with_items: 
     - go
+    - cpp
     - python
   register: docker_pull_out
   changed_when: '"Downloaded newer image" in docker_pull_out.stdout'
 
 - name: add the work tag to the image for later reference
   sudo: true
-  shell: docker tag $(docker history --quiet {{ g_docker_clean_image[item] }} | head --lines=1) {{ g_docker_work_image[item] }}
+  shell: docker tag --force $(docker history --quiet {{ g_docker_clean_image[item] }} | head --lines=1) {{ g_docker_work_image[item] }}
   with_items: 
     - go
+    - cpp
     - python
 
 - name: checkout git system-testing repo

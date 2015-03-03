@@ -6,7 +6,12 @@
   remote_user: ubuntu
   gather_facts: false
   roles:
-      - clients
+    - clients
   
   tasks:
     - include: roles/clients/tasks/reset.yml
+      vars:
+
+        target_client_impl: 
+          - go
+          - cpp

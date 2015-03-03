@@ -2,16 +2,18 @@
 # these are variables needed in multiple places in the playbooks. They are all name-space'd with g_lobal
 
 # number of AWS instances to provision
-g_total_no_hosts: 180
+g_total_no_hosts: 5
 
 # the docker images we use for client
 g_docker_clean_image: 
   go:     ethereum/client-go
+  cpp:    sveneh/cpp-eth
   python: sveneh/pyethereum-develop
 
 # the docker image where state is stored during a scenario run
 g_docker_work_image: 
   go:     local/go-work
+  cpp:    local/cpp-work
   python: local/python-work
 
 

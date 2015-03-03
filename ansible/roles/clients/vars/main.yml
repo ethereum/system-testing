@@ -5,6 +5,20 @@ repo_path: /home/ubuntu/git
 # container ids are composed strings: <base_string>_<impl>_<number>
 docker_container_base_string: docker_container
 
-docker_image: 
-  go:     ethereum/client-go
-  python: sveneh/pyethereum-develop
+# external port mapping of first client on each host
+# https://github.com/ethereum/system-testing/wiki/Multi-client-support-on-one-instance
+ext_port:
+  go:
+    rpc: 20000
+    p2p: 30000
+  cpp:
+    rpc: 21000
+    p2p: 31000
+  python:
+    rpc: 22000
+    p2p: 32000
+
+# TODO not yet finished yet - for multiple lcient support on one machine
+target_client_no:
+    - '000'
+

@@ -15,8 +15,6 @@ import os
 
 key_file = '../ansible/system-testing.pem'
 
-use_impls = ['go']
-
 # this must be the same as in ../ansible/group_vars/all
 # fixme use node_id tool cli
 g_boot_public_key = '829bb728a1b38d2e3bb8288d750502f7dce2ee329aaebf48ddc54e0cfc8003b3068fe57e20277ba50e42826c4d2bfcb172699e108d9e90b3339f8b6589449faf'
@@ -46,10 +44,10 @@ def mk_inventory_executable(inventory):
     return fn
 
 
-def exec_playbook(inventory, playbook):
+def exec_playbook(inventory, playbook, impl=['go']):
     fn = mk_inventory_executable(inventory)
     # replace for go with --tags=go or delete to address both
-    impls = ','.join(use_impls)
+    impls = ','.join(impl)
     args = ['ansible-playbook', '../ansible/%s' %
             playbook, '-i', fn, '--tags=%s' % impls] + ansible_args
     print 'executing', ' '.join(args)
@@ -60,7 +58,7 @@ def exec_playbook(inventory, playbook):
         print 'success'
 
 
-def start_clients(clients=[],maxnumpeer=7):
+def start_clients(clients=[], maxnumpeer=7, impl=['go']):
     """
     start all clients with a custom config (nodeid)
     """
@@ -89,23 +87,21 @@ def start_clients(clients=[],maxnumpeer=7):
                                                       mining_cpu_percentage=mining_cpu_percentage,
                                                       req_num_peers=maxnumpeer,
                                                       coinbase=coinbase)
+        d['vars']['target_client_impl'] = impl
         d['vars']['docker_run_args'] = {}
         d['vars']['docker_run_args']['go'] = dra_go
         d['vars']['docker_run_args']['python'] = dra_python
-        d['vars']['docker_container_id'] = {}
-        d['vars']['docker_container_id']['go'] = 'docker_go'
-        d['vars']['docker_container_id']['python'] = 'docker_python'
         d['vars']['docker_tee_args'] = {}
         d['vars']['docker_tee_args']['go'] = teees_args.format(
             elarch_ip=inventory.es, pubkey_hex=pubkey)
         d['vars']['docker_tee_args']['python'] = teees_args.format(
             elarch_ip=inventory.es, pubkey_hex=pubkey)
         inventory.inventory[client] = d
-    # print json.dumps(inventory.inventory, indent=2)
-    exec_playbook(inventory.inventory, playbook='client-start.yml')
+        # print json.dumps(inventory.inventory, indent=2)
+    exec_playbook(inventory.inventory, playbook='client-start.yml', impl=impl)
 
 
-def stop_clients(clients=[]):
+def stop_clients(clients=[], impl=['go']):
     # create group in inventory
     inventory = Inventory()
     clients = clients or list(inventory.clients)
@@ -115,12 +111,11 @@ def stop_clients(clients=[]):
     for client in clients:
         assert client
         d = dict(hosts=inventory.inventory[client], vars=dict())
-        d['vars']['docker_container_id'] = {}
-        d['vars']['docker_container_id']['go'] = 'docker_go'
-        d['vars']['docker_container_id']['python'] = 'docker_python'
         inventory.inventory[client] = d
+        d['vars']['target_client_impl'] = impl
 #    print json.dumps(inventory.inventory, indent=2)
-    exec_playbook(inventory.inventory, playbook='client-stop.yml')
+    exec_playbook(inventory.inventory, playbook='client-stop.yml', impl=impl)
+
 
 
 if __name__ == '__main__':
@@ -130,9 +125,9 @@ if __name__ == '__main__':
     sys.argv = sys.argv[:1]
     if 'start' in args:
         # start_clients()
-        start_clients([u'tag_Name_ST-host-00000'])
+        start_clients([u'tag_Name_ST-host-00001'])
     elif 'stop' in args:
         # stop_clients()
-        stop_clients([u'tag_Name_ST-host-00000'])
+        stop_clients([u'tag_Name_ST-host-00001'])
     else:
         print 'usage:%s start|stop' % sys.argv[0]

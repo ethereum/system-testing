@@ -10,3 +10,6 @@
   
   tasks:
     - include: roles/clients/tasks/stop.yml
+      vars:
+        target_client_impl:
+          - go
