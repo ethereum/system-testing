@@ -5,6 +5,7 @@ ec2_instance_type:      t2.medium
 ec2_security_group:     system-testing
 ec2_image:              
   us-west-1:            ami-076e6542
+  us-west-2:            ami-29ebb519
   us-east-1:            ami-9eaa1cf6
   eu-central-1:         ami-9a380b87
   ap-southeast-1:       ami-ca381398

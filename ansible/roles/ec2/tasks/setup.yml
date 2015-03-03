@@ -50,6 +50,15 @@
         to_port: 9200
         cidr_ip: "{{ ec2_ip_access_range }}"
 
+
+- name: import public key to access instances later 
+  ec2_key: 
+    region: "{{ ec2_region }}" 
+    name: system-testing
+    key_material: "{{ item }}"
+  with_file: system-testing.pub
+
+
 - name: start ec2 instance for bootstrapping node
   ec2:  
     group: "{{ ec2_security_group }}"
@@ -97,5 +106,3 @@
     count_tag: 
         Name: ST-elarch 
     exact_count: 1
-
-- debug: var=cec2
