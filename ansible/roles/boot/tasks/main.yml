@@ -1,10 +1,27 @@
 ---
-# - name: Start bootstrapping node (cpp client)
-#   sudo: yes
-#   docker: 
-#      image:    sveneh/cpp-ethereum expose:   30303
-#      ports:    30303:30303
-#      command:  --client-name bootstrap --mining off
+
+- name: download / updates cpp client
+  sudo: true
+  # the official ansible docker module does not have the option to just pull the image, it will also run it
+  shell: docker pull {{ g_docker_clean_image['cpp'] }} 
+  register: docker_pull_out
+  changed_when: '"Downloaded newer image" in docker_pull_out.stdout'
+  tags:
+    - cpp
+
+- name: Start bootstrapping node (cpp client)
+  sudo: yes
+  docker: 
+     image:    "{{ g_docker_clean_image['cpp'] }}"
+     expose:   
+      - 30303/tcp
+      - 30303/udp
+     ports:    
+      - 30303:30303/tcp
+      - 30303:30303/udp
+     command:  --client-name bootstrap --mining off --mode full --upnp off --public-ip {{ groups['tag_Name_ST-boot'][0] }} 
+  tags:
+    - cpp
 
 - name: download / updates latest Go clients base via docker
   sudo: true
@@ -12,10 +29,13 @@
   shell: docker pull {{ g_docker_clean_image['go'] }} 
   register: docker_pull_out
   changed_when: '"Downloaded newer image" in docker_pull_out.stdout'
-
+  tags:
+    - go
 
 - name: Prepare building go bootstrap image
   copy: src=../files/docker-go-boot dest=/tmp
+  tags:
+    - go
 
 - name: Build go bootstrap image locally
   sudo: yes
@@ -23,6 +43,8 @@
     path: /tmp/docker-go-boot
     name: local/eth-go-boot
     state: build
+  tags:
+    - go
 
 
 - name: Start bootstrapping node (go)
@@ -36,6 +58,8 @@
       - 30303:30303/tcp
       - 30303:30303/udp
     command:  -nodekeyhex={{ boot_private_key }} -addr=:30303
+  tags:
+    - go
 
 #- name: Start bootstrapping node (python client)
 #  sudo: yes
