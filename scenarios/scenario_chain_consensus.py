@@ -1,14 +1,18 @@
+import random
+import time
+import pytest
 from base import Inventory
 from clients import start_clients, stop_clients
 from eshelper import consensus, log_scenario
-import random
-import time
-import sys
 
 state_durations = dict(stopped=(1, 10), running=(10, 30))
 test_time = 60
 max_time_to_reach_consensus = 10
 random.seed(42)
+num_scheduled_clients = 2
+
+def log_event(event, **kwargs):
+    log_scenario(name='chain_consensus', event=event, **kwargs)
 
 
 def mkschedule(client):
@@ -25,21 +29,14 @@ def mkschedule(client):
             break
     return events
 
+@pytest.fixture(scope='module', autouse=True)
+def run_clients(run_clients):
+    log_event('started')
+    if not run_clients:
+        return
 
-def scenario(num_scheduled_clients=2):
-    """
-    starts all clients
-    stops, restarts clients in a random pattern
-    starts all clients
-    waits a bit
-    checks for consensus
-
-    @return: bool(consensous of all)
-    """
     inventory = Inventory()
     clients = inventory.clients
-
-    log_scenario(name='chain_consensus', event='started')
 
     # create schedule
     events = []
@@ -53,12 +50,12 @@ def scenario(num_scheduled_clients=2):
     # use client-reset.yml playbook, needs to set docker_container_id in inventory
 
     # start-up all clients
-    log_scenario(name='p2p_connect', event='start_all_clients')
+    log_event('start_all_clients')
     start_clients(clients=clients)
-    log_scenario(name='p2p_connect', event='start_all_clients.done')
+    log_event('start_all_clients.done')
 
     # run events
-    log_scenario(name='p2p_connect', event='run_churn_schedule')
+    log_event('run_churn_schedule')
     elapsed = 0
     while events:
         e = events.pop(0)
@@ -70,33 +67,33 @@ def scenario(num_scheduled_clients=2):
         client = e['client']
         print elapsed, cmd.__name__, client
         cmd(clients=[client])
-    log_scenario(name='p2p_connect', event='run_churn_schedule.done')
+    log_event('run_churn_schedule.done')
 
     # start all clients
-    log_scenario(name='p2p_connect', event='start_all_clients_again')
+    log_event('start_all_clients_again')
     start_clients(clients=clients)
-    log_scenario(name='p2p_connect', event='start_all_clients_again.done')
+    log_event('start_all_clients_again.done')
 
     # let them agree on a block
-    log_scenario(name='p2p_connect', event='wait_for_consensus')
+    log_event('wait_for_consensus')
     time.sleep(max_time_to_reach_consensus)
-    log_scenario(name='p2p_connect', event='wait_for_consensus.done')
-    return check_consensus(clients)
+    log_event('wait_for_consensus.done')
 
 
-def check_consensus(clients):
+@pytest.fixture(scope='module')
+def client_count():
+    inventory = Inventory()
+    return len(inventory.clients)
+
+
+def test_consensus(client_count):
     num_agreeing_clients = consensus(offset=max_time_to_reach_consensus)
-    print '%d out of %d clients are on the same chain' % (num_agreeing_clients, len(clients))
-    return num_agreeing_clients == len(clients)
+    print '%d out of %d clients are on the same chain' % (num_agreeing_clients,
+                                                          client_count)
+    assert num_agreeing_clients == client_count
 
 
-def check_consensus_only():
+def test_consensus_only():
     inventory = Inventory()
     clients = inventory.clients
-    return check_consensus(clients)
-
-if __name__ == '__main__':
-    # success = check_consensus_only()
-    success = scenario()
-    if not success:
-        sys.exit(1)
+    return test_consensus(len(clients))
