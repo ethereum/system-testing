@@ -23,5 +23,6 @@ echo "Setting up in $EC2_REGION region."
 # --tag selecets implementation of bootstrap node
 ansible-playbook ec2-setup.yml --extra-vars=ec2_region=$EC2_REGION --inventory-file=inventory/hosts && \
 ansible-playbook client-setup.yml && \
-ansible-playbook client-setup-bootstrap.yml --tag go && \  
-ansible-playbook elarch-setup.yml 			-
+ansible-playbook client-setup-bootstrap.yml && \  
+ansible-playbook client-start-bootstrap.yml && \
+ansible-playbook elarch-setup.yml 	

@@ -61,7 +61,8 @@ class Inventory(object):
     def __init__(self):
         inventory = self.inventory = ec2.inventory()
         self.instances = dict((k, v[0]) for k, v in inventory.items() if k.startswith('tag_Name_'))
-        self.boot = self.instances['tag_Name_ST-boot']
+        self.boot0 = self.instances['tag_Name_ST-boot-00000']
+        self.boot1 = self.instances['tag_Name_ST-boot-00001']
         self.es = self.instances['tag_Name_ST-elarch']
         self.clients = OrderedDict(sorted((k, v) for k, v in self.instances.items()
                                           if k.startswith('tag_Name_ST-host-')))
