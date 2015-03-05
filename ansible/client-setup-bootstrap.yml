@@ -4,6 +4,12 @@
   remote_user: ubuntu # key is defined in ansible.cfg 
   gather_facts: false
   roles:
-      - docker_install
-      - common
-      - boot
+    - role: docker_install
+      tags:
+        cpp
+        go
+    - role: common
+      tags:
+        cpp
+        go
+    - boot

@@ -5,6 +5,7 @@ def coinbase(endpoint):
     """
      curl -X POST --data '{"jsonrpc":"2.0","method":"eth_coinbase","params":[],"id":1}' http://54.67.35.229:20000
      """
+    print 'querying endpoit: ' + endpoint
     c = pyjsonrpc.HttpClient(endpoint)
     r = c.call('eth_coinbase')
     return r
@@ -30,11 +31,11 @@ def transact(endpoint, sender, to, value=0, data=''):
 
 
 if __name__ == '__main__':
-    endpoint = 'http://54.67.35.229:20000'
+    endpoint = 'http://52.1.186.139:20000'
     cb = coinbase(endpoint)
     print cb
     v = balance(endpoint, cb)
     print v
-    receiver = '0xd46e8dd67c5d32be8058bb8eb970870f072445675'
+    receiver = '0xfeb20351743297074352c62549d2fcf5bd6cd835'
     r = transact(endpoint, sender=cb, to=receiver, value=100)
     print r

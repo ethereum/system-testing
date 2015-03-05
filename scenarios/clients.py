@@ -20,7 +20,7 @@ key_file = '../ansible/system-testing.pem'
 g_boot_public_key = '829bb728a1b38d2e3bb8288d750502f7dce2ee329aaebf48ddc54e0cfc8003b3068fe57e20277ba50e42826c4d2bfcb172699e108d9e90b3339f8b6589449faf'
 
 docker_run_args = {}
-docker_run_args['go'] = '-port=30000 -rpcaddr=0.0.0.0 -loglevel=1000 -logformat=raw ' \
+docker_run_args['go'] = '-port=30000 -rpcaddr=0.0.0.0 -rpcport=20000 -loglevel=1000 -logformat=raw ' \
     '-bootnodes=enode://{bootstrap_public_key}@{bootstrap_ip}:30303 ' \
     '-maxpeer={req_num_peers} ' \
     '-nodekeyhex={privkey} ' \
@@ -33,7 +33,7 @@ teees_args = '{elarch_ip} guid,{pubkey_hex}'
 mining_cpu_percentage = 50
 
 # add -vv for debug output
-ansible_args = ['-u', 'ubuntu', '--private-key=../ansible/system-testing.pem', '-vv']
+ansible_args = ['-u', 'ubuntu', '--private-key=../ansible/system-testing.pem']
 
 
 def mk_inventory_executable(inventory):

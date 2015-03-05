@@ -7,19 +7,20 @@ from elasticsearch_dsl import Search
 from eshelper import client, pprint, F, log_scenario
 
 min_peer_count = 2
-scenario_run_time_s = 5 * 60
-
+maxpeer= 5
+scenario_run_time_s = 1 * 60
+impl = ['go']
 
 def execute(clients):
     log_scenario('p2p_connect', 'starting.clients')
-    start_clients(clients=clients, maxnumpeer=min_peer_count)
+    start_clients(clients=clients, maxnumpeer=min_peer_count, impl=impl)
 
     log_scenario('p2p_connect', 'starting.clients.done')
     print 'let it run for %d secs...' % scenario_run_time_s
     time.sleep(scenario_run_time_s)
 
     log_scenario('p2p_connect', 'stopping.clients')
-    stop_clients(clients=clients)
+    # stop_clients(clients=clients, impl=impl)
 
     log_scenario('p2p_connect', 'stopping.clients.done')
 
