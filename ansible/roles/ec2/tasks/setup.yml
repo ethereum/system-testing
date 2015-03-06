@@ -59,7 +59,7 @@
   with_file: system-testing.pub
 
 
-- name: start ec2 instance for bootstrapping node
+- name: start ec2 instances for bootstrapping node
   ec2:  
     group: "{{ ec2_security_group }}"
     instance_type: "{{ ec2_instance_type }}" 
@@ -68,13 +68,14 @@
     region: "{{ ec2_region }}"
     key_name: "{{ ec2_keypair }}"
     instance_tags:
-        Name: ST-boot
+        Name: "{{ item }}"
         Role: ST-bootstrap
     count_tag: 
-        Name: ST-boot 
+        Name: "{{ item }}"
     exact_count: 1
-    # WARNING: Enabling install via user_data will interfere with following ansible scripts. DO NOT USE! 
+    # WARNING: Enabling install via user_data will interfere with other ansible scripts. DO NOT USE! 
     # user_data: "#include https://get.docker.com"
+  with_sequence: start=0 end={{ g_total_no_boot - 1 }} format=ST-boot-%05u
 
 - name: start new ec2 instances for client hosts
   ec2:  

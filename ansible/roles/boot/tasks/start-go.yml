@@ -1,0 +1,12 @@
+---
+- name: Start bootstrapping node (go)
+  sudo: yes
+  docker: 
+    image:    local/eth-go-boot
+    expose:   
+      - 30303/tcp
+      - 30303/udp
+    ports:    
+      - 30303:30303/tcp
+      - 30303:30303/udp
+    command:  -nodekeyhex={{ boot1_private_key }} -addr=:30303

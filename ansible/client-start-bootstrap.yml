@@ -1,0 +1,20 @@
+---
+- name: Start bootstrapping node 0
+  hosts: tag_Name_ST-boot-00000 
+  remote_user: ubuntu 
+  gather_facts: false
+  roles:
+    - boot
+
+  tasks:
+    - include: roles/boot/tasks/start-go.yml
+
+- name: Start bootstrapping node 1
+  hosts: tag_Name_ST-boot-00001 
+  remote_user: ubuntu 
+  gather_facts: false
+  roles:
+    - boot
+
+  tasks:
+    - include: roles/boot/tasks/start-cpp.yml  

@@ -17,7 +17,7 @@ key_file = '../ansible/system-testing.pem'
 
 # this must be the same as in ../ansible/group_vars/all
 # fixme use node_id tool cli
-g_boot_public_key = '829bb728a1b38d2e3bb8288d750502f7dce2ee329aaebf48ddc54e0cfc8003b3068fe57e20277ba50e42826c4d2bfcb172699e108d9e90b3339f8b6589449faf'
+g_boot0_public_key = '829bb728a1b38d2e3bb8288d750502f7dce2ee329aaebf48ddc54e0cfc8003b3068fe57e20277ba50e42826c4d2bfcb172699e108d9e90b3339f8b6589449faf'
 
 docker_run_args = {}
 docker_run_args['go'] = '-port=30000 -rpcaddr=0.0.0.0 -rpcport=20000 -loglevel=1000 -logformat=raw ' \
@@ -69,7 +69,7 @@ def start_clients(clients=[], maxnumpeer=7, impl=['go']):
     # print clients
     # quit()
     assert inventory.es
-    assert inventory.boot
+    assert inventory.boot0
     for client in clients:
         assert client
         ext_id = str(client)
@@ -78,13 +78,13 @@ def start_clients(clients=[], maxnumpeer=7, impl=['go']):
         coinbase = nodeid_tool.coinbase(ext_id)
 
         d = dict(hosts=inventory.inventory[client], vars=dict())
-        dra_go = docker_run_args['go'].format(bootstrap_public_key=g_boot_public_key,
-                                              bootstrap_ip=inventory.boot,
+        dra_go = docker_run_args['go'].format(bootstrap_public_key=g_boot0_public_key,
+                                              bootstrap_ip=inventory.boot0,
                                               req_num_peers=maxnumpeer,
                                               privkey=privkey
                                               )
 
-        dra_python = docker_run_args['python'].format(bootstrap_ip=inventory.boot,
+        dra_python = docker_run_args['python'].format(bootstrap_ip=inventory.boot0,
                                                       mining_cpu_percentage=mining_cpu_percentage,
                                                       req_num_peers=maxnumpeer,
                                                       coinbase=coinbase)
@@ -108,7 +108,7 @@ def stop_clients(clients=[], impl=['go']):
     clients = clients or list(inventory.clients)
     inventory.inventory['client_stop_group'] = dict(children=clients, hosts=[])
     assert inventory.es
-    assert inventory.boot
+    assert inventory.boot0
     for client in clients:
         assert client
         d = dict(hosts=inventory.inventory[client], vars=dict())

@@ -1,15 +1,12 @@
 ---
 - name: Start bootstrapping node
-  hosts: tag_Name_ST-boot
+  hosts: tag_Role_ST-bootstrap
   remote_user: ubuntu # key is defined in ansible.cfg 
   gather_facts: false
   roles:
-    - role: docker_install
-      tags:
-        cpp
-        go
-    - role: common
-      tags:
-        cpp
-        go
+    - docker_install
+    - common
     - boot
+
+  tasks:
+      - include: roles/boot/tasks/setup.yml

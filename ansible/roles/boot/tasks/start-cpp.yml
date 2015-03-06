@@ -1,0 +1,27 @@
+---
+- name: getting host IP
+  ec2_facts:
+  tags:
+    - cpp
+
+- name: Start bootstrapping node (cpp client)
+  sudo: yes
+  docker: 
+     image:    "{{ g_docker_clean_image['cpp'] }}"
+     expose:   
+      - 30303/tcp
+      - 30303/udp
+     ports:    
+      - 30303:30303/tcp
+      - 30303:30303/udp
+     command:  --client-name bootstrap --mining off --mode full --upnp off --public-ip {{ ansible_ec2_public_ipv4 }} 
+  tags:
+    - cpp
+
+#- name: Start bootstrapping node (python client)
+#  sudo: yes
+#  docker: 
+#      image:    sveneh/pyethereum-develop
+#      expose:   30303
+#      ports:    30303:30303
+#      command:  --peers 0 --mining 0 
