@@ -65,11 +65,27 @@ while True:
     l = sys.stdin.readline().strip()
     if not l:
         continue
+
+    # workaround for multi-line jsons from cpp
+    if l == '{':
+        ml = l
+        while True:
+            l = sys.stdin.readline()
+
+            # workaround for wrong time format in cpp, add subseconds and Z
+            if '\"ts\"' in l and not 'Z\"' in l:
+                l = l[:-2] + '.000000Z\"'
+            ml = ml + l.strip()
+            if l == '}\n':
+                break
+        l = ml
+            
     try:
         d = json.loads(l)
     except ValueError:
         d = dict(event='notjson', log_line=l, logging_error='raw input')
 
+    print d
     # FIX for wrongly specified events
     d = d if len(d) > 1 else dict(list(d.values()[0].items()) + [('event', d.keys()[0])])
 
@@ -81,9 +97,12 @@ while True:
     # substitute event name
     d['event'] = substitutions.get(d['event'], d['event'])
 
+
     # format for kibana
     kd = lsformatter.format(d)
 
+    print kd
+    print
     # send to elasticsearch
     es_log(kd)
 
