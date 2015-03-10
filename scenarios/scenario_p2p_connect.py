@@ -1,48 +1,52 @@
+import time
+from elasticsearch_dsl import Search
+import pytest
 from base import Inventory
 from clients import start_clients, stop_clients
-import time
-import sys
 import nodeid_tool
-from elasticsearch_dsl import Search
 from eshelper import client, pprint, F, log_scenario
 
-min_peer_count = 4
-maxpeer= 5
+min_peer_count = 2
+max_peer = 5
 scenario_run_time_s = 1 * 60
 impls = ['cpp']
 # 0 is go bootstrap, 1 is cpp bootstrap
 boot = 1
 
-def execute(clients):
-    log_scenario('p2p_connect', 'starting.clients')
-    start_clients(clients=clients, maxnumpeer=min_peer_count, impls=impls, boot=boot)
-
-    log_scenario('p2p_connect', 'starting.clients.done')
-    print 'let it run for %d secs...' % scenario_run_time_s
-    time.sleep(scenario_run_time_s)
-
-    log_scenario('p2p_connect', 'stopping.clients')
-    stop_clients(clients=clients, impls=impls)
-
-    log_scenario('p2p_connect', 'stopping.clients.done')
+def log_event(event, **kwargs):
+    log_scenario(name='p2p_connect', event=event, **kwargs)
 
 
-def scenario():
-    """
-    starts all clients
-
-    check: all clients logged 'starting' event
-
-    @return: bool(consensous of all)
-    """
-    log_scenario(name='p2p_connect', event='started')
-
+@pytest.fixture(scope='module', autouse=True)
+def run_clients(run_clients):
+    log_event('started')
     inventory = Inventory()
     clients = inventory.clients
 
-    execute(clients)
+    if not run_clients:
+        return len(clients)
 
-    # check all started
+    log_event('starting.clients')
+    start_clients(clients=clients, maxnumpeer=min_peer_count, impls=impls, boot=boot)
+    log_event('starting.clients.done')
+
+    print 'let it run for %d secs...' % scenario_run_time_s
+    time.sleep(scenario_run_time_s)
+
+    log_event('stopping_clients')
+    stop_clients(clients=clients, impls=impls)
+    log_event('stopping_clients.done')
+    return len(clients)
+
+
+@pytest.fixture(scope='module')
+def clients():
+    inventory = Inventory()
+    return inventory.clients
+
+
+def test_started(clients):
+    """Check that all clients logged 'starting' event"""
     """
         "starting": {
             "comment": "one of the first log events, before any operation is started",
@@ -58,41 +62,34 @@ def scenario():
     # pprint(response)
 
     num_started = len(response.aggregations.by_guid.buckets)
-    num_started_expected = len(clients)
+    client_count = len(clients)
 
-    if not num_started == num_started_expected:
-        print 'FAIL: only %d (of %d) clients started' % (num_started, num_started_expected)
-        return False
+    assert num_started == client_count, 'only %d (of %d) clients '  \
+           'started' % (num_started, client_count)
     print 'PASS: all clients started logging'
     for tag in response.aggregations.by_guid.buckets:
         # print(tag.key, tag.doc_count)
-        if not tag.doc_count == 1:
-            print 'FAIL: some clients started more than once'
-            return False
+        assert tag.doc_count == 1, 'some clients started more than once'
     print 'PASS: all clients started just once'
 
-    # check all connected
+
+def test_connections(client_count):
+    """Check that all clients are connected to each other, but not itself."""
     s = Search(client)
     s = s.filter(F('term', at_message='p2p.connected'))
     s.aggs.bucket('by_guid', 'terms', field='guid', size=0)
     response = s.execute()
 
     num_connected = len(response.aggregations.by_guid.buckets)
-    num_connected_expected = len(clients)
-
-    if not num_connected == num_connected_expected:
-        print 'FAIL: only %d (of %d) clients connected to other nodes' % \
-            (num_connected, num_connected_expected)
-        return False
+    assert num_connected == client_count, 'only %d (of %d) '  \
+           'clients connected to other nodes' % (num_connected, client_count)
     print 'PASS: all clients have at least one connection to another node'
 
     for tag in response.aggregations.by_guid.buckets:
         # print(tag.key, tag.doc_count)
         num_connected = tag.doc_count
-        if not num_connected >= min_peer_count:
-            print 'FAIL: one client only connected to %d (of %d) other nodes"' % \
-                (num_connected, min_peer_count)
-            return False
+        assert num_connected >= min_peer_count, 'one client only connected '  \
+               'to %d (of %d) other nodes"' % (num_connected, min_peer_count)
     print 'PASS: all clients are connected at least to %d other nodes' % min_peer_count
 
     guids = [nodeid_tool.topub(ext_id.encode('utf-8')) for ext_id in clients]
@@ -103,13 +100,5 @@ def scenario():
         s = s.filter(F('term', remote_id=guid))
         response = s.execute()
         # pprint (response)
-        if not response.hits.total == 0:
-            print 'FAIL: a client is connected to itself'
-            return False
+        assert response.hits.total == 0, 'a client is connected to itself'
     print 'PASS: no client is connected to itself'
-    return True
-
-if __name__ == '__main__':
-    success = scenario()
-    if not success:
-        sys.exit(1)
