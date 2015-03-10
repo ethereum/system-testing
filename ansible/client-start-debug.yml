@@ -21,10 +21,11 @@
           - cpp
 
         docker_run_args:
-          go:     -loglevel=5 -port=30000 -rpcaddr=0.0.0.0 -rpcport=20000 -bootnodes=enode://{{ g_boot_public_key }}@{{ groups['tag_Name_ST-boot'][0] }}:30303 -maxpeer={{ dbg_req_num_peers }}     
-          cpp:     --verbosity 9 --listen 31000 --json-rpc-port 21000 --remote {{ groups['tag_Name_ST-boot'][0] }} --peer {{ dbg_req_num_peers }} --public-ip {{ ansible_ec2_public_ipv4 }}
-          python: --logging :debug --log_json 1 --remote {{ groups['tag_Name_ST-boot'][0] }} --port 30303 --mining {{ dbg_mining_cpu_percentage }} --peers {{ dbg_req_num_peers }}
+          go:     -loglevel=5 -port=30000 -rpcaddr=0.0.0.0 -rpcport=20000 -bootnodes=enode://{{ g_boot0_public_key }}@{{ groups['tag_Name_ST-boot-00000'][0] }}:30303 -maxpeer={{ dbg_req_num_peers }}     
+          cpp:     --verbosity 9 --json-rpc-port 21000 --listen 31000 --upnp off --remote {{ groups['tag_Name_ST-boot-00001'][0] }} --peers {{ dbg_req_num_peers }} --public-ip {{ ansible_ec2_public_ipv4 }}
+          python: --logging :debug --log_json 1 --remote {{ groups['tag_Name_ST-boot-00000'][0] }} --port 30303 --mining {{ dbg_mining_cpu_percentage }} --peers {{ dbg_req_num_peers }}
 
         docker_tee_args:
           go:     "{{ groups['tag_Name_ST-elarch'][0]}}"
+          cpp:    "{{ groups['tag_Name_ST-elarch'][0]}}"
           python: "{{ groups['tag_Name_ST-elarch'][0]}}"

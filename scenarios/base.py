@@ -107,7 +107,7 @@ if __name__ == '__main__':
     inventory = Inventory()
     # print rrun(inventory.clients['client-03'], 'docker ps')
     # print ansible_run('tag_Name_client-02', 'command', 'docker ps')
-    print 'bootstrapping', inventory.boot
+    print 'bootstrapping', inventory.boot0, inventory.boot1
     print 'elasticsearch', inventory.es
     print 'clients', inventory.clients
     print 'roles', inventory.roles

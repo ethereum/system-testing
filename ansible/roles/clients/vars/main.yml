@@ -18,7 +18,7 @@ ext_port:
     rpc: 22000
     p2p: 32000
 
-# TODO not yet finished yet - for multiple lcient support on one machine
+# TODO not yet finished yet - for multiple client support on one machine
 target_client_no:
     - '000'
 

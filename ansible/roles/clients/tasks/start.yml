@@ -35,7 +35,7 @@
     - cpp
     - python
 
-# This only works with the first implementation! No loop support w/ async
+# TODO! This only works with the first implementation! No loop support w/ async
 - name: Forward go logfiles with parameters from inventory file
   # fire and forget, don't wait to finish, run for one day
   async: 86400
@@ -45,6 +45,17 @@
   register: log_runner_go
   tags:
     - go
+
+# TODO! This only works with the first implementation! No loop support w/ async
+- name: Forward cpp logfiles with parameters from inventory file
+  # fire and forget, don't wait to finish, run for one day
+  async: 86400
+  poll: 0
+  # again, ansible docker module does not support logs
+  shell: docker logs --follow=true {{ docker_container_base_string ~ '_cpp_000' }} 2>&1 | {{ repo_path }}/logging/teees.py {{ docker_tee_args['cpp'] }} 
+  register: log_runner_cpp
+  tags:
+    - cpp 
 
 # - name: Forward go logfiles with parameters from inventory file
   # daemonize, in ansible only possible via 'async' but that does not work with 'with_nested'

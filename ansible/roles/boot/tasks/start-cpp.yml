@@ -14,7 +14,7 @@
      ports:    
       - 30303:30303/tcp
       - 30303:30303/udp
-     command:  --client-name bootstrap --mining off --mode full --upnp off --public-ip {{ ansible_ec2_public_ipv4 }} 
+     command:  --verbosity 9 --client-name bootstrap --mining off --mode full --upnp off --public-ip {{ ansible_ec2_public_ipv4 }} 
   tags:
     - cpp
 
