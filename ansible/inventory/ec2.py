@@ -134,6 +134,9 @@ except ImportError:
 _cache_argv = sys.argv[:]
 if not 'ec2' in sys.argv[0]:
     sys.argv = sys.argv[:1]
+if '--run' in sys.argv:
+    sys.argv.remove('--run')
+
 
 
 class Ec2Inventory(object):
