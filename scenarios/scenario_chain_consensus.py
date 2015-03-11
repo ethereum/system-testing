@@ -30,7 +30,15 @@ def mkschedule(client):
     return events
 
 @pytest.fixture(scope='module', autouse=True)
-def run_clients(run_clients):
+def run(run_clients):
+    """Run the clients.
+    
+    Because of ``autouse=True`` this method is executed before everything else
+    in this module.
+
+    The `run_clients` fixture is defined in ``conftest.py``. It is true by
+    default but false if the --norun command line flag is set.
+    """
     log_event('started')
     if not run_clients:
         return
@@ -82,6 +90,9 @@ def run_clients(run_clients):
 
 @pytest.fixture(scope='module')
 def client_count():
+    """py.test passes this fixture to every test function expecting an argument
+    called ``client_count``.
+    """
     inventory = Inventory()
     return len(inventory.clients)
 
