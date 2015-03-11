@@ -1,7 +1,8 @@
 ---
 # default config for ec2 instances
 
-ec2_instance_type:      t2.medium
+# c3 instead of c4, it has ssd storage
+ec2_instance_type:      c3.large
 ec2_security_group:     system-testing
 ec2_image:              
   us-west-1:            ami-076e6542

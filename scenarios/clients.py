@@ -65,7 +65,7 @@ def get_boot_ip_pk(inventory, boot=0):
     d = dict(ip=inventory.boot0 if boot==0 else inventory.boot1, pk=g_boot0_public_key if boot==0 else g_boot1_public_key)
     return d
 
-def start_clients(clients=[], maxnumpeer=7, impls=['go'], boot=0):
+def start_clients(clients=[], req_num_peers=7, impls=['go'], boot=0):
     """
     start all clients with a custom config (nodeid)
     """
@@ -94,17 +94,17 @@ def start_clients(clients=[], maxnumpeer=7, impls=['go'], boot=0):
         dra = {}
         dra['go'] = docker_run_args['go'].format(bootstrap_public_key=bt['pk'],
                                               bootstrap_ip=bt['ip'],
-                                              req_num_peers=maxnumpeer,
+                                              req_num_peers=req_num_peers, 
                                               privkey=privkey['go']
                                               )
 
         dra['cpp'] = docker_run_args['cpp'].format(bootstrap_ip=bt['ip'],
                                                       client_ip=inventory.instances[client],
-                                                      req_num_peers=maxnumpeer)
+                                                      req_num_peers=req_num_peers)
 
         dra['python'] = docker_run_args['python'].format(bootstrap_ip=bt['ip'],
                                                       mining_cpu_percentage=mining_cpu_percentage,
-                                                      req_num_peers=maxnumpeer,
+                                                      req_num_peers=req_num_peers,
                                                       coinbase=coinbase['python'])
         d['vars']['target_client_impl'] = impls
         d['vars']['docker_run_args'] = {}
@@ -120,7 +120,7 @@ def start_clients(clients=[], maxnumpeer=7, impls=['go'], boot=0):
     exec_playbook(inventory.inventory, playbook='client-start.yml', impls=impls)
 
 
-def stop_clients(clients=[], impls=['go']):
+def stop_clients(clients=[], impls=['go'], boot=0):
     # create group in inventory
     inventory = Inventory()
     clients = clients or list(inventory.clients)

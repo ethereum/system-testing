@@ -64,6 +64,41 @@ def consensus(offset=10):
         return 0
 
 
+def check_connection(minconnected=2, minpeers=2):
+    """
+    check that at least minconnected clients are connected to at least minpeers other clients
+    total is the total number of clients in this scenario 
+
+    return false if any test fails
+    """
+    passed = True
+    s = Search(client)
+    s = s.filter(F('term', at_message='p2p.connected'))
+    s.aggs.bucket('by_guid', 'terms', field='guid', size=0)
+    response = s.execute()
+
+    num_connected = len(response.aggregations.by_guid.buckets)
+    num_connected_expected = minconnected
+
+    if not num_connected == num_connected_expected:
+        print 'FAIL: only %d (of %d) clients connected to other nodes' % \
+            (num_connected, num_connected_expected)
+        passed = False
+    else:
+        print 'PASS: all clients have at least one connection to another node'
+
+    for tag in response.aggregations.by_guid.buckets:
+        print(tag.key, tag.doc_count)
+        num_connected = tag.doc_count
+        if not num_connected >= minpeers:
+            print 'FAIL: one client only connected to %d (of %d) other nodes"' % \
+                (num_connected, minpeers)
+            passed = False
+    if passed:
+        print 'PASS: all clients are connected at least to %d other nodes' % minpeers 
+    return passed
+
+
 def consensus2():
     """
     measure block propagation time (including adding to the chain)

@@ -4,7 +4,7 @@ import time
 import sys
 import nodeid_tool
 from elasticsearch_dsl import Search
-from eshelper import client, pprint, F, log_scenario
+from eshelper import client, pprint, F, log_scenario, check_connection
 
 min_peer_count = 4
 maxpeer= 5
@@ -15,7 +15,7 @@ boot = 1
 
 def execute(clients):
     log_scenario('p2p_connect', 'starting.clients')
-    start_clients(clients=clients, maxnumpeer=min_peer_count, impls=impls, boot=boot)
+    start_clients(clients=clients, req_num_peers=len(clients), impls=impls, boot=boot)
 
     log_scenario('p2p_connect', 'starting.clients.done')
     print 'let it run for %d secs...' % scenario_run_time_s
@@ -71,29 +71,7 @@ def scenario():
             return False
     print 'PASS: all clients started just once'
 
-    # check all connected
-    s = Search(client)
-    s = s.filter(F('term', at_message='p2p.connected'))
-    s.aggs.bucket('by_guid', 'terms', field='guid', size=0)
-    response = s.execute()
-
-    num_connected = len(response.aggregations.by_guid.buckets)
-    num_connected_expected = len(clients)
-
-    if not num_connected == num_connected_expected:
-        print 'FAIL: only %d (of %d) clients connected to other nodes' % \
-            (num_connected, num_connected_expected)
-        return False
-    print 'PASS: all clients have at least one connection to another node'
-
-    for tag in response.aggregations.by_guid.buckets:
-        # print(tag.key, tag.doc_count)
-        num_connected = tag.doc_count
-        if not num_connected >= min_peer_count:
-            print 'FAIL: one client only connected to %d (of %d) other nodes"' % \
-                (num_connected, min_peer_count)
-            return False
-    print 'PASS: all clients are connected at least to %d other nodes' % min_peer_count
+    check_connection(minconnected=len(clients), minpeers=maxpeer-1)
 
     guids = [nodeid_tool.topub(ext_id.encode('utf-8')) for ext_id in clients]
     for guid in guids:

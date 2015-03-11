@@ -1,6 +1,6 @@
 from base import Inventory
 from clients import start_clients, stop_clients
-from eshelper import consensus, log_scenario
+from eshelper import consensus, log_scenario, check_connection
 import random
 import time
 import sys
@@ -9,7 +9,10 @@ state_durations = dict(stopped=(1, 10), running=(10, 30))
 test_time = 60
 max_time_to_reach_consensus = 10
 random.seed(42)
-
+num_scheduled_clients=1
+impls = ['go']
+# 0 is go, 1 is cpp
+boot = 0
 
 def mkschedule(client):
     state = 'running'
@@ -26,7 +29,7 @@ def mkschedule(client):
     return events
 
 
-def scenario(num_scheduled_clients=2):
+def scenario(num_scheduled_clients=num_scheduled_clients):
     """
     starts all clients
     stops, restarts clients in a random pattern
@@ -49,12 +52,12 @@ def scenario(num_scheduled_clients=2):
     assert len(events)
     print '\n'.join(repr(e) for e in events)
 
-    # FIXME, reset client storage
-    # use client-reset.yml playbook, needs to set docker_container_id in inventory
+    # reset client storage
+    # use client-reset.yml playbook
 
     # start-up all clients
     log_scenario(name='p2p_connect', event='start_all_clients')
-    start_clients(clients=clients)
+    start_clients(clients=clients, impls=impls, boot=boot)
     log_scenario(name='p2p_connect', event='start_all_clients.done')
 
     # run events
@@ -69,12 +72,12 @@ def scenario(num_scheduled_clients=2):
         cmd = dict(running=start_clients, stopped=stop_clients)[e['state']]
         client = e['client']
         print elapsed, cmd.__name__, client
-        cmd(clients=[client])
+        cmd(clients=[client], impls=impls, boot=boot)
     log_scenario(name='p2p_connect', event='run_churn_schedule.done')
 
     # start all clients
     log_scenario(name='p2p_connect', event='start_all_clients_again')
-    start_clients(clients=clients)
+    start_clients(clients=clients, impls=impls, boot=boot)
     log_scenario(name='p2p_connect', event='start_all_clients_again.done')
 
     # let them agree on a block
@@ -85,6 +88,7 @@ def scenario(num_scheduled_clients=2):
 
 
 def check_consensus(clients):
+    check_connection(minconnected=len(clients))
     num_agreeing_clients = consensus(offset=max_time_to_reach_consensus)
     print '%d out of %d clients are on the same chain' % (num_agreeing_clients, len(clients))
     return num_agreeing_clients == len(clients)
