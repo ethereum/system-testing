@@ -16,13 +16,23 @@ def log_event(event, **kwargs):
 
 
 @pytest.fixture(scope='module', autouse=True)
-def run_clients(run_clients):
+def run(run_clients):
+    """Run the clients.
+
+    Because of ``autouse=True`` this method is executed before everything else
+    in this module.
+
+    The `run_clients` fixture is defined in ``conftest.py``. It is true by
+    default but false if the --norun command line flag is set.
+    """
     log_event('started')
-    inventory = Inventory()
-    clients = inventory.clients
 
     if not run_clients:
-        return len(clients)
+        # don't run clients if --norun option is set
+        return
+
+    inventory = Inventory()
+    clients = inventory.clients
 
     log_event('starting.clients')
     start_clients(clients=clients, maxnumpeer=min_peer_count, impl=impl)
@@ -34,17 +44,19 @@ def run_clients(run_clients):
     log_event('stopping_clients')
     # stop_clients(clients=clients, imp=impl)
     log_event('stopping_clients.done')
-    return len(clients)
 
 
 @pytest.fixture(scope='module')
 def clients():
+    """py.test passes this fixture to every test function expecting an argument
+    called ``clients``.
+    """
     inventory = Inventory()
     return inventory.clients
 
 
 def test_started(clients):
-    """Check that all clients logged 'starting' event"""
+    """Check that all clients logged 'starting' event."""
     """
         "starting": {
             "comment": "one of the first log events, before any operation is started",
@@ -71,7 +83,7 @@ def test_started(clients):
     print 'PASS: all clients started just once'
 
 
-def test_connections(client_count):
+def test_connections(clients):
     """Check that all clients are connected to each other, but not itself."""
     s = Search(client)
     s = s.filter(F('term', at_message='p2p.connected'))
@@ -79,6 +91,7 @@ def test_connections(client_count):
     response = s.execute()
 
     num_connected = len(response.aggregations.by_guid.buckets)
+    client_count = len(clients)
     assert num_connected == client_count, 'only %d (of %d) '  \
            'clients connected to other nodes' % (num_connected, client_count)
     print 'PASS: all clients have at least one connection to another node'
