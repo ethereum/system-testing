@@ -716,7 +716,15 @@ def inventory():
     return json.loads(Ec2Inventory().data_to_print)
 
 if __name__ == '__main__':
-    inv = Ec2Inventory()
+    parser = argparse.ArgumentParser(description='Produce an Ansible Inventory file based on EC2')
+    parser.add_argument('--list', action='store_true', default=True,
+                        help='List instances (default: True)')
+    parser.add_argument('--host', action='store',
+                        help='Get all the variables about a specific instance')
+    parser.add_argument('--refresh-cache', action='store_true', default=False,
+                        help='Force refresh of cache by making API requests to EC2 (default: False - use cache files)')
+    args = parser.parse_args()
+    inv = Ec2Inventory(args.list, args.host, args.refresh_cache)
     print inv.data_to_print
     if inv.is_empty():
         sys.exit(1)
