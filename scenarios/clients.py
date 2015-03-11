@@ -21,11 +21,11 @@ g_boot0_public_key = '829bb728a1b38d2e3bb8288d750502f7dce2ee329aaebf48ddc54e0cfc
 g_boot1_public_key = 'tbd'
 
 docker_run_args = {}
-docker_run_args['go'] = '-port=30000 -rpcaddr=0.0.0.0 -rpcport=20000 -loglevel=1000 -logformat=raw ' \
-    '-bootnodes=enode://{bootstrap_public_key}@{bootstrap_ip}:30303 ' \
-    '-maxpeer={req_num_peers} ' \
-    '-nodekeyhex={privkey} ' \
-    '-mine=true'
+docker_run_args['go'] = '--port=30000 --rpcaddr=0.0.0.0 --rpcport=20000 --loglevel=1000 --logformat=raw ' \
+    '--bootnodes=enode://{bootstrap_public_key}@{bootstrap_ip}:30303 ' \
+    '--maxpeers={req_num_peers} ' \
+    '--nodekeyhex={privkey} ' \
+    '--mine=true'
 
 docker_run_args['cpp'] = '--verbosity 0 --structured-logging --json-rpc-port 21000 --listen 31000 --upnp off ' \
     ' --public-ip {client_ip} --remote {bootstrap_ip} --peers {req_num_peers}'
@@ -146,12 +146,12 @@ if __name__ == '__main__':
     if 'start' in args:
         log_scenario(name='cmd_line', event='start_clients')
         # start_clients()
-        start_clients([u'tag_Name_ST-host-00000'], impls=['cpp'], boot=1)
+        start_clients([u'tag_Name_ST-host-00000'], impls=['go'], boot=0)
         log_scenario(name='cmd_line', event='start_clients.done')
     elif 'stop' in args:
         log_scenario(name='cmd_line', event='stop_clients')
         # stop_clients()
-        stop_clients([u'tag_Name_ST-host-00000'], impls=['cpp'])
+        stop_clients([u'tag_Name_ST-host-00000'], impls=['go'])
         log_scenario(name='cmd_line', event='stop_clients')
     else:
         print 'usage:%s start|stop' % sys.argv[0]

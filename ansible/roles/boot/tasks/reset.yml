@@ -1,0 +1,11 @@
+---
+
+- name: Stop all bootnodes
+  # ansible docker does not support stop by container name, only by image name. Stupid.
+  shell: docker stop $(docker ps -a -q) 
+  ignore_errors: true  
+
+- name: rm all containers
+  # ansible docker module does not support this ...
+  shell: docker rm $(docker ps -a -q) 
+  ignore_errors: true  
