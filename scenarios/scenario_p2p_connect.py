@@ -73,7 +73,7 @@ def test_started(clients):
     print 'PASS: all clients started just once'
 
 
-def test_connections(client_count):
+def test_connections(clients):
     """Check that all clients are connected to each other, but not itself."""
     s = Search(client)
     s = s.filter(F('term', at_message='p2p.connected'))
@@ -81,7 +81,7 @@ def test_connections(client_count):
     response = s.execute()
 
     num_connected = len(response.aggregations.by_guid.buckets)
-    assert num_connected == client_count, 'only %d (of %d) '  \
+    assert num_connected == len(clients), 'only %d (of %d) '  \
            'clients connected to other nodes' % (num_connected, client_count)
     print 'PASS: all clients have at least one connection to another node'
 
