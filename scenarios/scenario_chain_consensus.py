@@ -1,18 +1,26 @@
+import random
+import time
+import pytest
 from base import Inventory
 from clients import start_clients, stop_clients
 from eshelper import consensus, log_scenario, check_connection
 import random
 import time
 import sys
+from eshelper import consensus, log_scenario, check_connection
 
 state_durations = dict(stopped=(1, 10), running=(10, 30))
 test_time = 60
 max_time_to_reach_consensus = 10
 random.seed(42)
-num_scheduled_clients=1
 impls = ['go']
 # 0 is go, 1 is cpp
 boot = 0
+num_scheduled_clients = 2
+
+def log_event(event, **kwargs):
+    log_scenario(name='chain_consensus', event=event, **kwargs)
+
 
 def mkschedule(client):
     state = 'running'
@@ -28,21 +36,22 @@ def mkschedule(client):
             break
     return events
 
+@pytest.fixture(scope='module', autouse=True)
+def run(run_clients):
+    """Run the clients.
+    
+    Because of ``autouse=True`` this method is executed before everything else
+    in this module.
 
-def scenario(num_scheduled_clients=num_scheduled_clients):
+    The `run_clients` fixture is defined in ``conftest.py``. It is true by
+    default but false if the --norun command line flag is set.
     """
-    starts all clients
-    stops, restarts clients in a random pattern
-    starts all clients
-    waits a bit
-    checks for consensus
+    log_event('started')
+    if not run_clients:
+        return
 
-    @return: bool(consensous of all)
-    """
     inventory = Inventory()
     clients = inventory.clients
-
-    log_scenario(name='chain_consensus', event='started')
 
     # create schedule
     events = []
@@ -56,12 +65,12 @@ def scenario(num_scheduled_clients=num_scheduled_clients):
     # use client-reset.yml playbook
 
     # start-up all clients
-    log_scenario(name='p2p_connect', event='start_all_clients')
+    log_event('start_all_clients')
     start_clients(clients=clients, impls=impls, boot=boot)
-    log_scenario(name='p2p_connect', event='start_all_clients.done')
+    log_event('start_all_clients.done')
 
     # run events
-    log_scenario(name='p2p_connect', event='run_churn_schedule')
+    log_event('run_churn_schedule')
     elapsed = 0
     while events:
         e = events.pop(0)
@@ -73,34 +82,31 @@ def scenario(num_scheduled_clients=num_scheduled_clients):
         client = e['client']
         print elapsed, cmd.__name__, client
         cmd(clients=[client], impls=impls, boot=boot)
-    log_scenario(name='p2p_connect', event='run_churn_schedule.done')
+    log_event('run_churn_schedule.done')
 
     # start all clients
-    log_scenario(name='p2p_connect', event='start_all_clients_again')
+    log_event('start_all_clients_again')
     start_clients(clients=clients, impls=impls, boot=boot)
-    log_scenario(name='p2p_connect', event='start_all_clients_again.done')
+    log_event('start_all_clients_again.done')
 
     # let them agree on a block
-    log_scenario(name='p2p_connect', event='wait_for_consensus')
+    log_event('wait_for_consensus')
     time.sleep(max_time_to_reach_consensus)
-    log_scenario(name='p2p_connect', event='wait_for_consensus.done')
-    return check_consensus(clients)
+    log_event('wait_for_consensus.done')
 
 
-def check_consensus(clients):
-    check_connection(minconnected=len(clients))
-    num_agreeing_clients = consensus(offset=max_time_to_reach_consensus)
-    print '%d out of %d clients are on the same chain' % (num_agreeing_clients, len(clients))
-    return num_agreeing_clients == len(clients)
-
-
-def check_consensus_only():
+@pytest.fixture(scope='module')
+def client_count():
+    """py.test passes this fixture to every test function expecting an argument
+    called ``client_count``.
+    """
     inventory = Inventory()
-    clients = inventory.clients
-    return check_consensus(clients)
+    return len(inventory.clients)
 
-if __name__ == '__main__':
-    # success = check_consensus_only()
-    success = scenario()
-    if not success:
-        sys.exit(1)
+
+def test_consensus(client_count):
+    assert check_connection(minconnected=client_count, minpeers=client_count-2)
+    num_agreeing_clients = consensus(offset=max_time_to_reach_consensus)
+    print '%d out of %d clients are on the same chain' % (num_agreeing_clients,
+                                                          client_count)
+    assert num_agreeing_clients == client_count

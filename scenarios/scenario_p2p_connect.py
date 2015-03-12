@@ -1,48 +1,65 @@
+import time
+from elasticsearch_dsl import Search
+import pytest
 from base import Inventory
 from clients import start_clients, stop_clients
-import time
-import sys
 import nodeid_tool
 from elasticsearch_dsl import Search
 from eshelper import client, pprint, F, log_scenario, check_connection
 
-min_peer_count = 4
-maxpeer= 5
+min_peer_count = 2
+max_peer = 5
 scenario_run_time_s = 1 * 60
 impls = ['cpp']
 # 0 is go bootstrap, 1 is cpp bootstrap
 boot = 1
 
-def execute(clients):
-    log_scenario('p2p_connect', 'starting.clients')
-    start_clients(clients=clients, req_num_peers=len(clients), impls=impls, boot=boot)
-
-    log_scenario('p2p_connect', 'starting.clients.done')
-    print 'let it run for %d secs...' % scenario_run_time_s
-    time.sleep(scenario_run_time_s)
-
-    log_scenario('p2p_connect', 'stopping.clients')
-    stop_clients(clients=clients, impls=impls)
-
-    log_scenario('p2p_connect', 'stopping.clients.done')
+def log_event(event, **kwargs):
+    log_scenario(name='p2p_connect', event=event, **kwargs)
 
 
-def scenario():
+@pytest.fixture(scope='module', autouse=True)
+def run(run_clients):
+    """Run the clients.
+
+    Because of ``autouse=True`` this method is executed before everything else
+    in this module.
+
+    The `run_clients` fixture is defined in ``conftest.py``. It is true by
+    default but false if the --norun command line flag is set.
     """
-    starts all clients
+    log_event('started')
 
-    check: all clients logged 'starting' event
-
-    @return: bool(consensous of all)
-    """
-    log_scenario(name='p2p_connect', event='started')
+    if not run_clients:
+        # don't run clients if --norun option is set
+        return
 
     inventory = Inventory()
     clients = inventory.clients
 
-    execute(clients)
+    log_event('starting.clients')
+    start_clients(clients=clients, maxnumpeer=min_peer_count, impls=impls, boot=boot)
+    log_event('starting.clients.done')
 
-    # check all started
+    print 'let it run for %d secs...' % scenario_run_time_s
+    time.sleep(scenario_run_time_s)
+
+    log_event('stopping_clients')
+    stop_clients(clients=clients, impls=impls)
+    log_event('stopping_clients.done')
+
+
+@pytest.fixture(scope='module')
+def clients():
+    """py.test passes this fixture to every test function expecting an argument
+    called ``clients``.
+    """
+    inventory = Inventory()
+    return inventory.clients
+
+
+def test_started(clients):
+    """Check that all clients logged 'starting' event."""
     """
         "starting": {
             "comment": "one of the first log events, before any operation is started",
@@ -58,21 +75,20 @@ def scenario():
     # pprint(response)
 
     num_started = len(response.aggregations.by_guid.buckets)
-    num_started_expected = len(clients)
+    client_count = len(clients)
 
-    if not num_started == num_started_expected:
-        print 'FAIL: only %d (of %d) clients started' % (num_started, num_started_expected)
-        return False
+    assert num_started == client_count, 'only %d (of %d) clients '  \
+           'started' % (num_started, client_count)
     print 'PASS: all clients started logging'
     for tag in response.aggregations.by_guid.buckets:
         # print(tag.key, tag.doc_count)
-        if not tag.doc_count == 1:
-            print 'FAIL: some clients started more than once'
-            return False
+        assert tag.doc_count == 1, 'some clients started more than once'
     print 'PASS: all clients started just once'
 
-    check_connection(minconnected=len(clients), minpeers=maxpeer-1)
 
+def test_connections(clients):
+    assert check_connection(minconnected=len(clients), minpeers=len(clients)-1)
+    
     guids = [nodeid_tool.topub(ext_id.encode('utf-8')) for ext_id in clients]
     for guid in guids:
         s = Search(client)
@@ -81,13 +97,5 @@ def scenario():
         s = s.filter(F('term', remote_id=guid))
         response = s.execute()
         # pprint (response)
-        if not response.hits.total == 0:
-            print 'FAIL: a client is connected to itself'
-            return False
+        assert response.hits.total == 0, 'a client is connected to itself'
     print 'PASS: no client is connected to itself'
-    return True
-
-if __name__ == '__main__':
-    success = scenario()
-    if not success:
-        sys.exit(1)

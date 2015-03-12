@@ -130,19 +130,19 @@ try:
 except ImportError:
     import simplejson as json
 
-# remove cmd args if this script is not meant
-_cache_argv = sys.argv[:]
-if not 'ec2' in sys.argv[0]:
-    sys.argv = sys.argv[:1]
-
 
 class Ec2Inventory(object):
     @classmethod
     def _empty_inventory(cls):
         return {"_meta" : {"hostvars" : {}}}
 
-    def __init__(self):
-        ''' Main execution path '''
+    def __init__(self, list_=True, host=None, refresh_cache=False):
+        ''' Main execution path
+        :param list_: List instances (default: True)
+        :param host: Get all the variables about a specific instance
+        :param refresh_cache: Force refresh of cache by making API requests to
+        EC2 (default: False - use cache files)
+        '''
 
         # Inventory grouped by instance IDs, tags, security groups, regions,
         # and availability zones
@@ -151,9 +151,12 @@ class Ec2Inventory(object):
         # Index of hostname (address) to instance ID
         self.index = {}
 
-        # Read settings and parse CLI arguments
+        # Read settings and arguments
         self.read_settings()
-        self.parse_cli_args()
+        self.args = argparse.Namespace()
+        self.args.list = list_
+        self.args.host = host
+        self.args.refresh_cache = refresh_cache
 
         # Cache
         if self.args.refresh_cache:
@@ -286,20 +289,6 @@ class Ec2Inventory(object):
             for x in config.get('ec2', 'instance_filters', '').split(','):
                 filter_key, filter_value = x.split('=')
                 self.ec2_instance_filters[filter_key].append(filter_value)
-
-    def parse_cli_args(self):
-        ''' Command line argument processing '''
-
-        parser = argparse.ArgumentParser(description='Produce an Ansible Inventory file based on EC2')
-        parser.add_argument('--list', action='store_true', default=True,
-                           help='List instances (default: True)')
-        parser.add_argument('--host', action='store',
-                           help='Get all the variables about a specific instance')
-        parser.add_argument('--refresh-cache', action='store_true', default=False,
-                           help='Force refresh of cache by making API requests to EC2 (default: False - use cache files)')
-        self.args = parser.parse_args()
-
-        sys.argv = _cache_argv
 
     def do_api_calls_update_cache(self):
         ''' Do API calls to each region, and save data in cache files '''
@@ -727,7 +716,15 @@ def inventory():
     return json.loads(Ec2Inventory().data_to_print)
 
 if __name__ == '__main__':
-    inv = Ec2Inventory()
+    parser = argparse.ArgumentParser(description='Produce an Ansible Inventory file based on EC2')
+    parser.add_argument('--list', action='store_true', default=True,
+                        help='List instances (default: True)')
+    parser.add_argument('--host', action='store',
+                        help='Get all the variables about a specific instance')
+    parser.add_argument('--refresh-cache', action='store_true', default=False,
+                        help='Force refresh of cache by making API requests to EC2 (default: False - use cache files)')
+    args = parser.parse_args()
+    inv = Ec2Inventory(args.list, args.host, args.refresh_cache)
     print inv.data_to_print
     if inv.is_empty():
         sys.exit(1)
