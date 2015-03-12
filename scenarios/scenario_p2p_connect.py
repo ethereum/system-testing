@@ -38,7 +38,7 @@ def run(run_clients):
     clients = inventory.clients
 
     log_event('starting.clients')
-    start_clients(clients=clients, maxnumpeer=min_peer_count, impls=impls, boot=boot)
+    start_clients(clients=clients, req_num_peers=min_peer_count, impls=impls, boot=boot, enable_mining=False)
     log_event('starting.clients.done')
 
     print 'let it run for %d secs...' % scenario_run_time_s

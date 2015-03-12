@@ -25,13 +25,13 @@ docker_run_args['go'] = '--port=30000 --rpcaddr=0.0.0.0 --rpcport=20000 --loglev
     '--bootnodes=enode://{bootstrap_public_key}@{bootstrap_ip}:30303 ' \
     '--maxpeers={req_num_peers} ' \
     '--nodekeyhex={privkey} ' \
-    '--mine=true'
+    '--mine={mining_state}'
 
-docker_run_args['cpp'] = '--verbosity 0 --structured-logging --json-rpc-port 21000 --listen 31000 --upnp off ' \
-    ' --public-ip {client_ip} --remote {bootstrap_ip} --peers {req_num_peers}'
+docker_run_args['cpp'] = '--verbosity 9 --structured-logging --json-rpc-port 21000 --listen 31000 --upnp off ' \
+    ' --public-ip {client_ip} --remote {bootstrap_ip} --peers {req_num_peers}, --mining {mining_state}'
 
 docker_run_args['python'] = '--logging :debug --log_json 1 --remote {bootstrap_ip} --port 30303 ' \
-    '--mining {mining_cpu_percentage} --peers {req_num_peers} --address {coinbase}'
+    '--mining {mining_state} --peers {req_num_peers} --address {coinbase}'
 teees_args = '{elarch_ip} guid,{pubkey_hex}'
 
 mining_cpu_percentage = 50
@@ -65,7 +65,7 @@ def get_boot_ip_pk(inventory, boot=0):
     d = dict(ip=inventory.boot0 if boot==0 else inventory.boot1, pk=g_boot0_public_key if boot==0 else g_boot1_public_key)
     return d
 
-def start_clients(clients=[], req_num_peers=7, impls=['go'], boot=0):
+def start_clients(clients=[], req_num_peers=7, impls=['go'], boot=0, enable_mining=True):
     """
     start all clients with a custom config (nodeid)
     """
@@ -95,17 +95,19 @@ def start_clients(clients=[], req_num_peers=7, impls=['go'], boot=0):
         dra['go'] = docker_run_args['go'].format(bootstrap_public_key=bt['pk'],
                                               bootstrap_ip=bt['ip'],
                                               req_num_peers=req_num_peers, 
-                                              privkey=privkey['go']
+                                              privkey=privkey['go'],
+                                              mining_state=enable_mining
                                               )
 
         dra['cpp'] = docker_run_args['cpp'].format(bootstrap_ip=bt['ip'],
                                                       client_ip=inventory.instances[client],
-                                                      req_num_peers=req_num_peers)
+                                                      req_num_peers=req_num_peers,
+                                                      mining_state='on' if enable_mining else 'off')
 
         dra['python'] = docker_run_args['python'].format(bootstrap_ip=bt['ip'],
-                                                      mining_cpu_percentage=mining_cpu_percentage,
                                                       req_num_peers=req_num_peers,
-                                                      coinbase=coinbase['python'])
+                                                      coinbase=coinbase['python'],
+                                                      mining_state=mining_cpu_percentage if enable_mining else '0')
         d['vars']['target_client_impl'] = impls
         d['vars']['docker_run_args'] = {}
         d['vars']['docker_tee_args'] = {}
