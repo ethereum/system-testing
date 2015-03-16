@@ -21,6 +21,7 @@ g_boot0_public_key = '829bb728a1b38d2e3bb8288d750502f7dce2ee329aaebf48ddc54e0cfc
 g_boot1_public_key = 'tbd'
 
 docker_run_args = {}
+# docker_run_args['go'] = '--port=30000 --rpcaddr=0.0.0.0 --rpcport=20000 --loglevel=5 ' \
 docker_run_args['go'] = '--port=30000 --rpcaddr=0.0.0.0 --rpcport=20000 --loglevel=1000 --logformat=raw ' \
     '--bootnodes=enode://{bootstrap_public_key}@{bootstrap_ip}:30303 ' \
     '--maxpeers={req_num_peers} ' \

@@ -7,12 +7,11 @@ import nodeid_tool
 from elasticsearch_dsl import Search
 from eshelper import client, pprint, F, log_scenario, check_connection
 
-min_peer_count = 2
-max_peer = 5
-scenario_run_time_s = 1 * 60
-impls = ['cpp']
+req_peer = 5
+scenario_run_time_s = 45
+impls = ['go']
 # 0 is go bootstrap, 1 is cpp bootstrap
-boot = 1
+boot = 0
 
 def log_event(event, **kwargs):
     log_scenario(name='p2p_connect', event=event, **kwargs)
@@ -38,14 +37,16 @@ def run(run_clients):
     clients = inventory.clients
 
     log_event('starting.clients')
-    start_clients(clients=clients, req_num_peers=min_peer_count, impls=impls, boot=boot, enable_mining=False)
+    for client in clients:
+        start_clients(clients=[client], req_num_peers=req_peer, impls=impls, boot=boot, enable_mining=False)
+        time.sleep(1)
     log_event('starting.clients.done')
 
     print 'let it run for %d secs...' % scenario_run_time_s
     time.sleep(scenario_run_time_s)
 
     log_event('stopping_clients')
-    stop_clients(clients=clients, impls=impls)
+    # stop_clients(clients=clients, impls=impls)
     log_event('stopping_clients.done')
 
 
