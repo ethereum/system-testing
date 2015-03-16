@@ -25,7 +25,7 @@ docker_run_args['go'] = '--port=30000 --rpcaddr=0.0.0.0 --rpcport=20000 --loglev
     '--bootnodes=enode://{bootstrap_public_key}@{bootstrap_ip}:30303 ' \
     '--maxpeers={req_num_peers} ' \
     '--nodekeyhex={privkey} ' \
-    '--mine={mining_state}' \
+    '--mine={mining_state} ' \
     '--unencrypted-keys'
 
 docker_run_args['cpp'] = '--verbosity 9 --structured-logging --json-rpc-port 21000 --listen 31000 --upnp off ' \
@@ -149,7 +149,7 @@ if __name__ == '__main__':
     if 'start' in args:
         log_scenario(name='cmd_line', event='start_clients')
         # start_clients()
-        start_clients([u'tag_Name_ST-host-00000'], impls=['cpp'], boot=1, enable_mining=True)
+        start_clients([u'tag_Name_ST-host-00000'], impls=['go'], boot=0, enable_mining=True)
         log_scenario(name='cmd_line', event='start_clients.done')
     elif 'stop' in args:
         log_scenario(name='cmd_line', event='stop_clients')

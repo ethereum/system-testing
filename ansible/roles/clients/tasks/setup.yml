@@ -1,4 +1,15 @@
 ---
+- name: checkout git system-testing repo (for teees.py)
+  git:
+      repo: https://github.com/ethereum/system-testing.git
+      dest: "{{ repo_path }}"
+        
+- name: install logging framework dependencies
+  sudo: true
+  pip:
+    name: elasticsearch
+    version: 0.4.5 
+
 - name: download latest clients via docker
   sudo: true
   # the official ansible docker module does not have the option to just pull the image, it will also run it
@@ -10,29 +21,5 @@
   register: docker_pull_out
   changed_when: '"Downloaded newer image" in docker_pull_out.stdout'
 
-- name: add the work tag to the image for later reference
-  sudo: true
-  shell: docker tag --force $(docker history --quiet {{ g_docker_clean_image[item] }} | head --lines=1) {{ g_docker_work_image[item] }}
-  with_items: 
-    - go
-    - cpp
-    - python
 
-- name: Create an initial account for the go client
-  sudo: true
-  shell: docker run --name="go-tmp" {{ g_docker_work_image['go'] }} --unencrypted-keys account new
-
-- name: Save the account in the go docker image
-  sudo: true
-  shell: docker commit go-tmp {{ g_docker_work_image['go'] }}
-
-- name: checkout git system-testing repo
-  git:
-      repo: https://github.com/ethereum/system-testing.git
-      dest: "{{ repo_path }}"
-        
-- name: install logging framework dependencies
-  sudo: true
-  pip:
-    name: elasticsearch
-    version: 0.4.5 
+- include: prepare.yml
