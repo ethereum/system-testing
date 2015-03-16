@@ -82,7 +82,7 @@
     group: "{{ ec2_security_group }}"
     instance_type: "{{ ec2_instance_type }}" 
     image: "{{ ec2_image[ec2_region] }}" 
-    wait: false 
+    wait: true
     region: "{{ ec2_region }}"
     key_name: "{{ ec2_keypair }}"
     instance_tags:

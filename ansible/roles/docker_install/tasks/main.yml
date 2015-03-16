@@ -11,15 +11,20 @@
   sudo: true
   apt: update_cache=true
 
-- name: install docker dependencies
+- name: install docker dependencies (apt)
   sudo: true
   apt: name={{ item }} install_recommends=false
   with_items:
     # Docker has serious problems on EC2: http://www.danstutzman.com/2014/07/speed-up-docker-on-ec2
     # and https://github.com/docker/docker/issues/4036
     - linux-generic
-    - python-pip
+    # pip has a version mismatch, see http://stackoverflow.com/questions/27341064/how-do-i-fix-importerror-cannot-import-name-incompleteread
+    - python-setuptools
   notify: restart server
+
+- name: install docker dependencies (easy_install)
+  sudo: true
+  easy_install: name=pip
 
 # make sure resteart is done now, not at end of play
 - meta: flush_handlers

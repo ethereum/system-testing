@@ -18,6 +18,14 @@
     - cpp
     - python
 
+- name: Create an initial account for the go client
+  sudo: true
+  shell: docker run --name="go-tmp" {{ g_docker_work_image['go'] }} --unencrypted-keys account new
+
+- name: Save the account in the go docker image
+  sudo: true
+  shell: docker commit go-tmp {{ g_docker_work_image['go'] }}
+
 - name: checkout git system-testing repo
   git:
       repo: https://github.com/ethereum/system-testing.git

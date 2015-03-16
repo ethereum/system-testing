@@ -25,7 +25,8 @@ docker_run_args['go'] = '--port=30000 --rpcaddr=0.0.0.0 --rpcport=20000 --loglev
     '--bootnodes=enode://{bootstrap_public_key}@{bootstrap_ip}:30303 ' \
     '--maxpeers={req_num_peers} ' \
     '--nodekeyhex={privkey} ' \
-    '--mine={mining_state}'
+    '--mine={mining_state}' \
+    '--unencrypted-keys'
 
 docker_run_args['cpp'] = '--verbosity 9 --structured-logging --json-rpc-port 21000 --listen 31000 --upnp off ' \
     ' --public-ip {client_ip} --remote {bootstrap_ip} --peers {req_num_peers} {mining_state}'
