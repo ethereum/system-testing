@@ -16,3 +16,7 @@
 - name: Save the account in the go docker image
   sudo: true
   shell: docker commit go-tmp {{ g_docker_work_image['go'] }}
+
+- name: Remove tmp docker container
+  sudo: true
+  shell: docker rm go-tmp 
