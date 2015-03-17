@@ -27,7 +27,7 @@ py==1.4.26
 pycrypto==2.6.1
 pyethereum==0.7.522
 pygraphviz==1.2
-pyjsonrpc
+python-jsonrpc
 pyparsing==2.0.3
 pysha3==0.3
 pytest==2.6.4
