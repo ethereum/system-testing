@@ -40,7 +40,7 @@ def run(run_clients):
     # log_event('stopping_clients.done')
 
     log_event('starting_one_client')
-    start_clients(clients=clients[:1], impl=impl)
+    start_clients(clients=clients[:1], impls=impl)
     log_event('starting_one_client.done')
     print 'mine a bit'
     blocktime = 12
@@ -51,7 +51,7 @@ def run(run_clients):
 
     # start other clients
     log_event('starting_other_clients')
-    start_clients(clients=clients[1:],impl=impl)
+    start_clients(clients=clients[1:],impls=impl)
     log_event('starting_other_clients.done')
 
     # create tx
