@@ -1,0 +1,11 @@
+---
+- name: Create folder to store ethash
+  sudo: true
+  file: name=/mnt/docker-eth state=directory
+
+- name: create the ethash (dag) from client
+  sudo: true
+  async: 1000
+  poll: 20
+  # ethhash is expected to be in /tmp/dag
+  shell: docker run --rm --volume=/mnt/docker-eth:/tmp {{ g_docker_work_image['go'] }} --unencrypted-keys makedag

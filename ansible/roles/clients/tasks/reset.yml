@@ -2,7 +2,7 @@
 - include: stop.yml
 
 - name: remove all containers from host
-  shell: docker rm --force $(docker ps --all --quiet)
+  shell: docker rm --volumes --force $(docker ps --all --quiet)
   ignore_errors: true
 
 - name: remove all work images from host

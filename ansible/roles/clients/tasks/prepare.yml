@@ -9,14 +9,6 @@
     - cpp
     - python
 
-- name: Create an initial account for the go client
-  sudo: true
-  shell: docker run --name="go-tmp" {{ g_docker_work_image['go'] }} --unencrypted-keys account new
 
-- name: Save the account in the go docker image
-  sudo: true
-  shell: docker commit go-tmp {{ g_docker_work_image['go'] }}
+- include: account.yml
 
-- name: Remove tmp docker container
-  sudo: true
-  shell: docker rm go-tmp 

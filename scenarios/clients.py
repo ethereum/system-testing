@@ -21,7 +21,9 @@ g_boot0_public_key = '829bb728a1b38d2e3bb8288d750502f7dce2ee329aaebf48ddc54e0cfc
 g_boot1_public_key = 'tbd'
 
 docker_run_args = {}
-# docker_run_args['go'] = '--port=30000 --rpcaddr=0.0.0.0 --rpcport=20000 --loglevel=5 ' \
+# have either structured logging or normal logging
+# docker_run_args['go'] = '--port=30000 --rpcaddr=0.0.0.0 --rpcport=20000 --loglevel=1000 --logformat=raw ' \
+# docker_run_args['go'] = '--port=30000 --rpcaddr=0.0.0.0 --rpcport=20000 --loglevel=3 ' \
 docker_run_args['go'] = '--port=30000 --rpcaddr=0.0.0.0 --rpcport=20000 --loglevel=1000 --logformat=raw ' \
     '--bootnodes=enode://{bootstrap_public_key}@{bootstrap_ip}:30303 ' \
     '--maxpeers={req_num_peers} ' \
@@ -150,7 +152,7 @@ if __name__ == '__main__':
     if 'start' in args:
         log_scenario(name='cmd_line', event='start_clients')
         # start_clients()
-        start_clients([u'tag_Name_ST-host-00000'], impls=['go'], boot=0, enable_mining=True)
+        start_clients([u'tag_Name_ST-host-00000', u'tag_Name_ST-host-00001', u'tag_Name_ST-host-00002'], impls=['go'], boot=0, enable_mining=True)
         log_scenario(name='cmd_line', event='start_clients.done')
     elif 'stop' in args:
         log_scenario(name='cmd_line', event='stop_clients')

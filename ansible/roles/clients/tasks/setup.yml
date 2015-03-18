@@ -23,3 +23,5 @@
 
 
 - include: prepare.yml
+
+- include: ethash.yml
