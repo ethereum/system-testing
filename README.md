@@ -13,7 +13,7 @@ tests are deployed via Ansible on Amazon EC2 instances.
 
 Current install on Ubuntu:
 ```
-sudo apt-get install python python-pip python-virtualenv
+sudo apt-get install libfreetype6-dev python-graphviz python python-pip python-virtualenv
 git clone https://github.com/ethereum/system-testing.git
 cd system-testing
 virtualenv venv
