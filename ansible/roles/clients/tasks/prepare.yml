@@ -1,5 +1,5 @@
 ---
-# prepararions for the clients before they are usable
+# preparations for the clients before they are usable
 
 - name: add the work tag to the image for later reference
   sudo: true

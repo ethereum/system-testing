@@ -15,7 +15,7 @@
       - "{{ ext_port[item[0]].p2p + item[1]|int }}:{{ ext_port[item[0]].p2p }}/udp"
       - "{{ ext_port[item[0]].p2p + item[1]|int }}:{{ ext_port[item[0]].p2p }}/tcp"
     # uses pre-calculated dag, only tested with go client
-    volumes: "/tmp/docker-eth:/tmp"
+    volumes: "/mnt/docker-eth:/tmp"
     command: "{{ docker_run_args[item[0]] }}"
   with_nested:
     - target_client_impl

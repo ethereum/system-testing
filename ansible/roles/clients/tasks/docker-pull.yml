@@ -1,0 +1,12 @@
+---
+
+- name: download latest clients via docker
+  sudo: true
+  # the official ansible docker module does not have the option to just pull the image, it will also run it
+  shell: docker pull {{ g_docker_clean_image[item] }} 
+  with_items: 
+    - go
+    - cpp
+    - python
+  register: docker_pull_out
+  changed_when: '"Downloaded newer image" in docker_pull_out.stdout'
