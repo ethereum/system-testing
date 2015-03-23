@@ -21,21 +21,36 @@ g_boot0_public_key = '829bb728a1b38d2e3bb8288d750502f7dce2ee329aaebf48ddc54e0cfc
 g_boot1_public_key = 'tbd'
 
 docker_run_args = {}
-# have either structured logging or normal logging
-# docker_run_args['go'] = '--port=30000 --rpcaddr=0.0.0.0 --rpcport=20000 --loglevel=1000 --logformat=raw ' \
-# docker_run_args['go'] = '--port=30000 --rpcaddr=0.0.0.0 --rpcport=20000 --loglevel=3 ' \
-docker_run_args['go'] = '--port=30000 --rpcaddr=0.0.0.0 --rpcport=20000 --loglevel=1000 --logformat=raw ' \
-    '--bootnodes=enode://{bootstrap_public_key}@{bootstrap_ip}:30303 ' \
-    '--maxpeers={req_num_peers} ' \
-    '--nodekeyhex={privkey} ' \
-    '--mine={mining_state} ' \
-    '--unencrypted-keys'
-
-docker_run_args['cpp'] = '--verbosity 9 --structured-logging --json-rpc-port 21000 --listen 31000 --upnp off ' \
-    ' --public-ip {client_ip} --remote {bootstrap_ip} --peers {req_num_peers} {mining_state}'
-
-docker_run_args['python'] = '--logging :debug --log_json 1 --remote {bootstrap_ip} --port 30303 ' \
-    '--mining {mining_state} --peers {req_num_peers} --address {coinbase}'
+docker_run_args['go'] = (
+    '--port=30000 '
+    '--rpcaddr=0.0.0.0 '
+    '--rpcport=20000 '
+    '--logjson "-" --loglevel "5" '
+    '--bootnodes=enode://{bootstrap_public_key}@{bootstrap_ip}:30303 '
+    '--maxpeers={req_num_peers} '
+    '--nodekeyhex={privkey} '
+    '--mine={mining_state} '
+    '--unencrypted-keys '
+)
+docker_run_args['cpp'] = (
+    '--verbosity 9 '
+    '--structured-logging '
+    '--json-rpc-port 21000 '
+    '--listen 31000 '
+    '--upnp off '
+    ' --public-ip {client_ip} '
+    '--remote {bootstrap_ip} '
+    '--peers {req_num_peers} {mining_state} '
+)
+docker_run_args['python'] = (
+    '--logging :debug '
+    '--log_json 1 '
+    '--remote {bootstrap_ip} '
+    '--port 30303 '
+    '--mining {mining_state} '
+    '--peers {req_num_peers} '
+    '--address {coinbase}'
+)
 teees_args = '{elarch_ip} guid,{pubkey_hex}'
 
 mining_cpu_percentage = 50
