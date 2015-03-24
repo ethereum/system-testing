@@ -25,12 +25,12 @@ ENV HOME /home/elasticsearch
 # Install elasticsearch
 #
 RUN cd /home/elasticsearch &&\
-wget -O - https://download.elasticsearch.org/elasticsearch/elasticsearch/elasticsearch-1.4.2.tar.gz | tar xzf -
+wget -O - https://download.elasticsearch.org/elasticsearch/elasticsearch/elasticsearch-1.4.4.tar.gz | tar xzf -
 
 EXPOSE 9200
 EXPOSE 9300
 
-ENTRYPOINT ["/home/elasticsearch/elasticsearch-1.4.2/bin/elasticsearch"]
+ENTRYPOINT ["/home/elasticsearch/elasticsearch-1.4.4/bin/elasticsearch"]
 
 # Define volume
 VOLUME ["/data", "/backup"]

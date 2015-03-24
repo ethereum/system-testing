@@ -4,17 +4,17 @@
 
 - name: Stop and remove elasticsearch instance/image
   sudo: yes
-  shell: docker stop elasticsearch ; docker rm elasticsearch ; docker rmi local/elasticsearch:1.4.2
+  shell: docker stop elasticsearch ; docker rm elasticsearch ; docker rmi local/elasticsearch:1.4.4
   ignore_errors: true
 
 - name: Build elasticsearch image locally
   sudo: yes
-  shell: cd /tmp/docker-elasticsearch && docker build --rm -t local/elasticsearch:1.4.2 .
+  shell: cd /tmp/docker-elasticsearch && docker build --rm -t local/elasticsearch:1.4.4 .
 
 - name: Deploy elasticsearch instance
   sudo: yes
   docker: 
-      image: local/elasticsearch:1.4.2
+      image: local/elasticsearch:1.4.4
       name: elasticsearch
       ports: ["9200:9200", "9300:9300"]
 
