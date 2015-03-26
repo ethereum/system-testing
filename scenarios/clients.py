@@ -30,8 +30,9 @@ docker_run_args['go'] = (
     '--maxpeers={req_num_peers} '
     '--nodekeyhex={privkey} '
     '--mine={mining_state} '
+    '--etherbase primary'
+    '--unlock primary'
     '--password <(echo -n test)'
-    '--unlock coinbase'
 )
 docker_run_args['cpp'] = (
     '--verbosity 9 '
