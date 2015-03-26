@@ -30,7 +30,8 @@ docker_run_args['go'] = (
     '--maxpeers={req_num_peers} '
     '--nodekeyhex={privkey} '
     '--mine={mining_state} '
-    '--unencrypted-keys '
+    '--password <(echo -n test)'
+    '--unlock coinbase'
 )
 docker_run_args['cpp'] = (
     '--verbosity 9 '
@@ -109,11 +110,11 @@ def start_clients(clients=[], req_num_peers=7, impls=['go'], boot=0, enable_mini
             coinbase[impl] = nodeid_tool.coinbase(ext_id)
 
         d = dict(hosts=inventory.inventory[client], vars=dict())
-       
+
         dra = {}
         dra['go'] = docker_run_args['go'].format(bootstrap_public_key=bt['pk'],
                                               bootstrap_ip=bt['ip'],
-                                              req_num_peers=req_num_peers, 
+                                              req_num_peers=req_num_peers,
                                               privkey=privkey['go'],
                                               mining_state=enable_mining
                                               )
@@ -135,7 +136,7 @@ def start_clients(clients=[], req_num_peers=7, impls=['go'], boot=0, enable_mini
             d['vars']['docker_run_args'][impl] = dra[impl]
             d['vars']['docker_tee_args'][impl] = teees_args.format(
             elarch_ip=inventory.es, pubkey_hex=pubkey[impl])
-        
+
         inventory.inventory[client] = d
         # print json.dumps(inventory.inventory, indent=2)
     exec_playbook(inventory.inventory, playbook='client-start.yml', impls=impls)
