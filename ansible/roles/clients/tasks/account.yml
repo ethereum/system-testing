@@ -2,7 +2,7 @@
 # create the account for eth go
 - name: Create an initial account for the go client
   sudo: true
-  shell: docker run --name="go-tmp" {{ g_docker_work_image['go'] }} --unencrypted-keys account new
+  shell: docker run --name="go-tmp" {{ g_docker_work_image['go'] }} --password <(echo -n test) account new
 
 - name: Save the account in the go docker image
   sudo: true
@@ -11,4 +11,4 @@
 - name: Remove tmp docker container
   sudo: true
   shell: docker rm go-tmp
-  
+
