@@ -1,0 +1,30 @@
+# maps all hosts to localhost for testing. Playbooks can be thus be run locally
+# use: ansible-playbook -i inventory/hosts-all-localhost --step -K <playbook>
+
+[tag_Role_ST-bootstrap]
+localhost ansible_connection=local
+
+[tag_Role_ST-client-host]
+localhost ansible_connection=local
+
+[tag_Name_ST-boot-00000]
+localhost ansible_connection=local
+
+[tag_Name_ST-boot-00001]
+localhost ansible_connection=local
+
+[client_start_group]
+localhost ansible_connection=local
+
+[client_stop_group]
+localhost ansible_connection=local
+
+[security_group_system-testing]
+localhost ansible_connection=local
+
+[tag_Name_ST-elarch]
+localhost ansible_connection=local
+
+[localhost]
+localhost ansible_connection=local
+
