@@ -5,10 +5,9 @@ from base import Inventory
 from clients import start_clients, stop_clients
 import nodeid_tool
 from elasticsearch_dsl import Search
-from eshelper import client, pprint, F, log_scenario, check_connection
+from eshelper import client, pprint, F, log_scenario, check_connection, consensus, assert_mining
 
 
-# time to run ethash creation
 scenario_run_time_s = 100
 impls = ['go']
 # 0 is go bootstrap, 1 is cpp bootstrap
@@ -37,11 +36,11 @@ def run(run_clients):
     inventory = Inventory()
     clients = inventory.clients
 
-    log_event('starting.clients')
+    log_event('starting.clients.sequentially')
     for client in clients:
         start_clients(clients=[client], impls=impls, boot=boot, enable_mining=True)
         time.sleep(1)
-    log_event('starting.clients.done')
+    log_event('starting.clients.sequentially.done')
 
     print 'let it run for %d secs...' % scenario_run_time_s
     time.sleep(scenario_run_time_s)
@@ -65,11 +64,13 @@ def clients():
 def test_connections(clients):
     assert check_connection(minconnected=len(clients), minpeers=len(clients)-2)
 
+def test_mining_started(clients):
+    assert_mining(minmining=len(clients))
 
 def test_consensus(clients):
     client_count = len(clients)
     assert check_connection(minconnected=client_count, minpeers=client_count-2)
-    num_agreeing_clients = consensus(offset=max_time_to_reach_consensus)
+    num_agreeing_clients = consensus()
     print '%d out of %d clients are on the same chain' % (num_agreeing_clients,
                                                           client_count)
     assert num_agreeing_clients == client_count

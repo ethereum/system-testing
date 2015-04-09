@@ -63,6 +63,17 @@ def consensus(offset=10):
     else:
         return 0
 
+def assert_mining(minmining=1):
+    """
+    assert that at least `minimining` client has started mining and mined a block
+    """
+    s = Search(client)
+    s = s.filter(F('term', at_message='eth.miner.new_block'))
+    s.aggs.bucket('by_guid', 'terms', field='guid', size=0)
+    response = s.execute()
+
+    num_mining = len(response.aggregations.by_guid.buckets)
+    assert num_mining >= minmining, 'only %d clients mining, expexted at least %d' % (num_mining, minmining)
 
 def check_connection(minconnected=2, minpeers=2):
     """
