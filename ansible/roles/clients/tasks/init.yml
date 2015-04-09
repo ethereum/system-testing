@@ -7,7 +7,7 @@
       ports:    ["20000:30203", "30000:30303"]
 
       # parameters given to client
-      command: -loglevel=5 -maxpeers={{ dbg_req_num_peers }}
+      command: -loglevel=5 -seednode={{ groups['tag_Name_ST-boot'][0] }}:30303 -maxpeers={{ dbg_req_num_peers }}
   tags:
     - go
 

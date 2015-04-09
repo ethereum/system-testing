@@ -30,9 +30,9 @@ docker_run_args['go'] = (
     '--maxpeers={req_num_peers} '
     '--nodekeyhex={privkey} '
     '--mine={mining_state} '
-    '--etherbase primary'
-    '--unlock primary'
-    '--password <(echo -n test)'
+    '--etherbase primary '
+    '--unlock primary '
+    '--password /tmp/geth-password '
 )
 docker_run_args['cpp'] = (
     '--verbosity 9 '
@@ -40,7 +40,7 @@ docker_run_args['cpp'] = (
     '--json-rpc-port 21000 '
     '--listen 31000 '
     '--upnp off '
-    ' --public-ip {client_ip} '
+    '--public-ip {client_ip} '
     '--remote {bootstrap_ip} '
     '--peers {req_num_peers} {mining_state} '
 )
@@ -51,7 +51,7 @@ docker_run_args['python'] = (
     '--port 30303 '
     '--mining {mining_state} '
     '--peers {req_num_peers} '
-    '--address {coinbase}'
+    '--address {coinbase} '
 )
 teees_args = '{elarch_ip} guid,{pubkey_hex}'
 
@@ -168,13 +168,15 @@ if __name__ == '__main__':
     print sys.argv
     if 'start' in args:
         log_scenario(name='cmd_line', event='start_clients')
-        # start_clients()
-        start_clients([u'tag_Name_ST-host-00000', u'tag_Name_ST-host-00001', u'tag_Name_ST-host-00002'], impls=['go'], boot=0, enable_mining=True)
+        start_clients()
         log_scenario(name='cmd_line', event='start_clients.done')
+    elif 'starttest' in args:
+        start_clients([u'tag_Name_ST-host-00000', u'tag_Name_ST-host-00001'], impls=['go'], boot=0, enable_mining=True)
     elif 'stop' in args:
         log_scenario(name='cmd_line', event='stop_clients')
-        # stop_clients()
-        stop_clients([u'tag_Name_ST-host-00000'], impls=['go'])
+        stop_clients()
         log_scenario(name='cmd_line', event='stop_clients')
+    elif 'stoptest' in args:
+        stop_clients([u'tag_Name_ST-host-00000'], impls=['go'])
     else:
         print 'usage:%s start|stop' % sys.argv[0]

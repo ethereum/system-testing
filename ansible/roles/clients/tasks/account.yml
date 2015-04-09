@@ -1,8 +1,24 @@
 ---
-# create the account for eth go
+# create the account for geth 
+
+- name: Create folder on localhost to store files outside of docker
+  sudo: true
+  file: name=/mnt/docker-eth state=directory
+
+- name: create dummy password file for geth
+  sudo: true
+  file: path=/mnt/docker-eth/geth-password state=touch 
+
+- name: Ensure that no leftover container is present 
+  sudo: true
+  docker: 
+    image: "{{ g_docker_work_image['go'] }}"
+    name: go-tmp
+    state: absent
+
 - name: Create an initial account for the go client
   sudo: true
-  shell: docker run --name="go-tmp" {{ g_docker_work_image['go'] }} --password <(echo -n test) account new
+  shell: docker run --name="go-tmp" --volume=/mnt/docker-eth:/tmp {{ g_docker_work_image['go'] }} --password /tmp/geth-password account new
 
 - name: Save the account in the go docker image
   sudo: true
@@ -10,5 +26,5 @@
 
 - name: Remove tmp docker container
   sudo: true
-  shell: docker rm go-tmp
+  shell: docker rm --volumes go-tmp
 
