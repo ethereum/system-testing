@@ -23,17 +23,17 @@
 
 - name: Stop and remove elasticsearch instance/image
   sudo: yes
-  shell: docker stop kibana4 ; docker rm kibana4 ; docker rmi local/kibana4:beta3
+  shell: docker stop kibana4 ; docker rm kibana4 ; docker rmi local/kibana4:snapshot4.10
   ignore_errors: true
 
 - name: Build kibana4 locally
   sudo: yes
-  shell: cd /tmp/docker-kibana4 && docker build --rm -t local/kibana4:beta3 .
+  shell: cd /tmp/docker-kibana4 && docker build --rm -t local/kibana4:snapshot4.10 .
 
 - name: Deploy kibana4 instance
   sudo: yes
   docker: 
-      image: local/kibana4:beta3 
+      image: local/kibana4:snapshot4.10
       name: kibana4
       links: elasticsearch:elasticsearch
       ports: ["80:5601"]
