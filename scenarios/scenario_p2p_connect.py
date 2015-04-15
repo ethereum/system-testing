@@ -7,11 +7,17 @@ import nodeid_tool
 from elasticsearch_dsl import Search
 from eshelper import client, pprint, F, log_scenario, assert_started, assert_connected
 
+### scenario configuartion
+
+# to how many peers should a connection be established
 req_peer = 5
+enable_mining=False
 scenario_run_time_s = 45
 impls = ['go']
 # 0 is go bootstrap, 1 is cpp bootstrap
 boot = 0
+# if you want to evaluate client logs on the hosts, don't stop the clients
+stop_clients_at_scenario_end = False
 
 def log_event(event, **kwargs):
     log_scenario(name='p2p_connect', event=event, **kwargs)
@@ -36,18 +42,19 @@ def run(run_clients):
     inventory = Inventory()
     clients = inventory.clients
 
-    log_event('starting.clients')
+    log_event('starting.clients.sequentially')
     for client in clients:
-        start_clients(clients=[client], req_num_peers=req_peer, impls=impls, boot=boot, enable_mining=False)
+        start_clients(clients=[client], req_num_peers=req_peer, impls=impls, boot=boot, enable_mining=enable_mining)
         time.sleep(1)
-    log_event('starting.clients.done')
+    log_event('starting.clients.sequentially.done')
 
     print 'let it run for %d secs...' % scenario_run_time_s
     time.sleep(scenario_run_time_s)
 
-    log_event('stopping_clients')
-    # stop_clients(clients=clients, impls=impls)
-    log_event('stopping_clients.done')
+    if stop_clients_at_scenario_end:
+        log_event('stopping_clients')
+        stop_clients(clients=clients, impls=impls)
+        log_event('stopping_clients.done')
 
 
 @pytest.fixture(scope='module')
