@@ -12,8 +12,9 @@ import subprocess
 import tempfile
 import stat
 import os
-from eshelper import log_scenario
 key_file = '../ansible/system-testing.pem'
+
+
 
 # this must be the same as in ../ansible/group_vars/all
 # fixme use node_id tool cli
@@ -57,9 +58,36 @@ teees_args = '{elarch_ip} guid,{pubkey_hex}'
 
 mining_cpu_percentage = 50
 
+
+
+
 # add -vv for debug output
 ansible_args = ['-u', 'ubuntu', '--private-key=../ansible/system-testing.pem']
 
+def create_clients_config(inventory):
+    clients_config = dict()
+    
+    for c, ip in inventory.clients.iteritems():
+        clients_config[c] = dict() 
+        for impl in ['go', 'cpp', 'python']:
+            clients_config[c][impl] = dict()
+            ext_id = str(c) + impl
+            clients_config[c][impl]['pubkey'] = nodeid_tool.topub(ext_id)
+            clients_config[c][impl]['privkey'] = nodeid_tool.topriv(ext_id)
+            clients_config[c][impl]['coinbase'] = nodeid_tool.coinbase(ext_id)
+    return clients_config
+
+def create_guid_lookup_table(inventory, client_config):
+    guid_lookup_table = dict()
+    for c in client_config:
+        for i in client_config[c]:
+            guid = (client_config[c][i]['pubkey'])
+            guid_lookup_table[guid] = { 'guid_short': guid[0:7] + '...', 'host': c, 'ip': inventory.clients[c], 'impl': i }
+    return guid_lookup_table
+
+
+clients_config = create_clients_config(Inventory())
+guid_lookup_table = create_guid_lookup_table(Inventory(), clients_config)
 
 def mk_inventory_executable(inventory):
     fn = tempfile.mktemp(suffix='json.sh', prefix='tmp_inventory', dir=None)
@@ -100,15 +128,6 @@ def start_clients(clients=[], req_num_peers=7, impls=['go'], boot=0, enable_mini
     assert inventory.boot0
     for client in clients:
         assert client
-        pubkey = {}
-        privkey = {}
-        coinbase = {}
-        for impl in ['go', 'cpp', 'python']:
-            ext_id = str(client) + impl
-            # print ext_id
-            pubkey[impl] = nodeid_tool.topub(ext_id)
-            privkey[impl] = nodeid_tool.topriv(ext_id)
-            coinbase[impl] = nodeid_tool.coinbase(ext_id)
 
         d = dict(hosts=inventory.inventory[client], vars=dict())
 
@@ -116,7 +135,7 @@ def start_clients(clients=[], req_num_peers=7, impls=['go'], boot=0, enable_mini
         dra['go'] = docker_run_args['go'].format(bootstrap_public_key=bt['pk'],
                                               bootstrap_ip=bt['ip'],
                                               req_num_peers=req_num_peers,
-                                              privkey=privkey['go'],
+                                              privkey=clients_config[client]['go']['privkey'],
                                               mining_state=enable_mining
                                               )
 
@@ -127,8 +146,9 @@ def start_clients(clients=[], req_num_peers=7, impls=['go'], boot=0, enable_mini
 
         dra['python'] = docker_run_args['python'].format(bootstrap_ip=bt['ip'],
                                                       req_num_peers=req_num_peers,
-                                                      coinbase=coinbase['python'],
+                                                      coinbase=clients_config[client]['python']['coinbase'],
                                                       mining_state=mining_cpu_percentage if enable_mining else '0')
+        
         d['vars']['target_client_impl'] = impls
         d['vars']['docker_run_args'] = {}
         d['vars']['docker_tee_args'] = {}
@@ -136,7 +156,7 @@ def start_clients(clients=[], req_num_peers=7, impls=['go'], boot=0, enable_mini
         for impl in ['go', 'cpp', 'python']:
             d['vars']['docker_run_args'][impl] = dra[impl]
             d['vars']['docker_tee_args'][impl] = teees_args.format(
-            elarch_ip=inventory.es, pubkey_hex=pubkey[impl])
+            elarch_ip=inventory.es, pubkey_hex=clients_config[client][impl]['pubkey'])
 
         inventory.inventory[client] = d
         # print json.dumps(inventory.inventory, indent=2)
@@ -165,13 +185,14 @@ if __name__ == '__main__':
     args = sys.argv[1:]
     # ec2.py peeks into args, so delete passing-variables-on-the-command-line
     sys.argv = sys.argv[:1]
-    print sys.argv
+   
     if 'start' in args:
         log_scenario(name='cmd_line', event='start_clients')
         start_clients()
         log_scenario(name='cmd_line', event='start_clients.done')
     elif 'starttest' in args:
-        start_clients([u'tag_Name_ST-host-00000', u'tag_Name_ST-host-00001'], impls=['go'], boot=0, enable_mining=True)
+        print clients_config[u'tag_Name_ST-host-00000']['go']
+        start_clients([u'tag_Name_ST-host-00000'], impls=['go'], boot=0, enable_mining=True)
     elif 'stop' in args:
         log_scenario(name='cmd_line', event='stop_clients')
         stop_clients()

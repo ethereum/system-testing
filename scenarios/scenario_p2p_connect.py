@@ -5,7 +5,7 @@ from base import Inventory
 from clients import start_clients, stop_clients
 import nodeid_tool
 from elasticsearch_dsl import Search
-from eshelper import client, pprint, F, log_scenario, check_connection
+from eshelper import client, pprint, F, log_scenario, assert_started, assert_connected
 
 req_peer = 5
 scenario_run_time_s = 45
@@ -60,35 +60,10 @@ def clients():
 
 
 def test_started(clients):
-    """Check that all clients logged 'starting' event."""
-    """
-        "starting": {
-            "comment": "one of the first log events, before any operation is started",
-            "client_impl": "Impl/OS/version, e.g. Go/Linux/0.8.2",
-            "eth_version": "int, e.g. 52",
-            "ts": "YYYY-MM-DDTHH:MM:SS.SSSSSSZ"
-        }
-    """
-    s = Search(client)
-    s = s.filter(F('term', at_message='starting'))
-    s.aggs.bucket('by_guid', 'terms', field='guid', size=0)
-    response = s.execute()
-    # pprint(response)
-
-    num_started = len(response.aggregations.by_guid.buckets)
-    client_count = len(clients)
-
-    assert num_started == client_count, 'only %d (of %d) clients '  \
-           'started' % (num_started, client_count)
-    print 'PASS: all clients started logging'
-    for tag in response.aggregations.by_guid.buckets:
-        # print(tag.key, tag.doc_count)
-        assert tag.doc_count == 1, 'some clients started more than once'
-    print 'PASS: all clients started just once'
-
+    assert_started(len(clients))
 
 def test_connections(clients):
-    assert check_connection(minconnected=len(clients), minpeers=len(clients)-1)
+    assert_connected(minconnected=len(clients), minpeers=len(clients)-2)
     
     guids = [nodeid_tool.topub(ext_id.encode('utf-8')) for ext_id in clients]
     for guid in guids:

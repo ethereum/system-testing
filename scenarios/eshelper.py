@@ -5,6 +5,7 @@ from elasticsearch_dsl import F as _F
 import time
 import json
 import datetime
+import clients
 from base import Inventory
 
 
@@ -22,6 +23,9 @@ client = Elasticsearch(es_endpoint)
 def pprint(x):
     print json.dumps(x.to_dict(), indent=2)
 
+
+def ip_from_guid(guid):
+    return clients.guid_lookup_table[guid]['guid_short'] + ' @ ' + clients.guid_lookup_table[guid]['ip'] + '/' + clients.guid_lookup_table[guid]['impl']
 
 def time_range_filter(offset=60):
     start_time = datetime.datetime.utcfromtimestamp(
@@ -63,52 +67,94 @@ def consensus(offset=10):
     else:
         return 0
 
-def assert_mining(minmining=1):
+def assert_started(minstarted):
+    """Asserts that at least `minstarted` clients logged 'starting' event."""
     """
-    assert that at least `minimining` client has started mining and mined a block
+        "starting": {
+            "comment": "one of the first log events, before any operation is started",
+            "client_impl": "Impl/OS/version, e.g. Go/Linux/0.8.2",
+            "eth_version": "int, e.g. 52",
+            "ts": "YYYY-MM-DDTHH:MM:SS.SSSSSSZ"
+        }
+    """
+    s = Search(client)
+    s = s.filter(F('term', at_message='starting'))
+    s.aggs.bucket('by_guid', 'terms', field='guid', size=0)
+    response = s.execute()
+    # pprint(response)
+
+    print "passed for:"
+    for tag in response.aggregations.by_guid.buckets:
+        print '  ' + ip_from_guid(tag.key)
+
+    num_started = len(response.aggregations.by_guid.buckets)
+
+    assert num_started >= minstarted, 'only %d (of %d) clients '  \
+            'started' % (num_started, minstarted)
+    for tag in response.aggregations.by_guid.buckets:
+        assert tag.doc_count == 1, 'client %s started more than once' % ip_from_guid(tag.key)
+
+
+def assert_connected(minconnected=2, minpeers=2):
+    """
+    assert that at least `minconnected` clients are connected to at least `minpeers` other clients
+    """
+    s = Search(client)
+    s = s.filter(F('term', at_message='p2p.connected'))
+    s.aggs.bucket('by_guid', 'terms', field='guid', size=0)
+    response = s.execute()
+    # pprint(response)
+    
+    print "passed for: "
+    for tag in response.aggregations.by_guid.buckets:
+        print '  ' + ip_from_guid(tag.key) + ',\t#connections: %d' % tag.doc_count
+
+    num_connected = len(response.aggregations.by_guid.buckets)
+    
+    assert num_connected >= minconnected, 'only %d (of %d) clients connected to other nodes' % (num_connected, minconnected)
+
+    for tag in response.aggregations.by_guid.buckets:
+        num_connected = tag.doc_count
+        assert num_connected >= minpeers, 'at least one client only connected to %d (of %d expected) other nodes"' % \
+                (num_connected, minpeers)
+
+def assert_mining(minmining):
+    """
+    assert that at least `minimining` clients have started mining and mined a block
     """
     s = Search(client)
     s = s.filter(F('term', at_message='eth.miner.new_block'))
     s.aggs.bucket('by_guid', 'terms', field='guid', size=0)
     response = s.execute()
+    # pprint(response)
 
+    print "passed for: "
+    for tag in response.aggregations.by_guid.buckets:
+        print '  ' + ip_from_guid(tag.key) + ',\t#blocks mined: %d' % tag.doc_count
+    
     num_mining = len(response.aggregations.by_guid.buckets)
     assert num_mining >= minmining, 'only %d clients mining, expexted at least %d' % (num_mining, minmining)
 
-def check_connection(minconnected=2, minpeers=2):
-    """
-    check that at least minconnected clients are connected to at least minpeers other clients
-    total is the total number of clients in this scenario 
 
-    return false if any test fails
+def assert_consensus(offset=10):
     """
-    passed = True
+    check for 'eth.chain.new_head' messages
+    and return the max number of clients, that had the same head
+    during the last `offset` seconds.
+
+    """
     s = Search(client)
-    s = s.filter(F('term', at_message='p2p.connected'))
-    s.aggs.bucket('by_guid', 'terms', field='guid', size=0)
+    s = s.query(Q("match", at_message='eth.chain.new_head'))
+    # s = s.filter(time_range_filter(offset=offset))
+    # By default, the buckets are ordered by their doc_count descending
+    s.aggs.bucket('by_block_hash', 'terms', field='@fields.block_hash', size=0)
+    # s = s[10:10]
     response = s.execute()
-
-    num_connected = len(response.aggregations.by_guid.buckets)
-    num_connected_expected = minconnected
-
-    if not num_connected == num_connected_expected:
-        print 'FAIL: only %d (of %d) clients connected to other nodes' % \
-            (num_connected, num_connected_expected)
-        passed = False
+    pprint (response)
+    if response:
+        return max(tag.doc_count for tag in response.aggregations.by_block_hash.buckets)
     else:
-        print 'PASS: all clients have at least one connection to another node'
-
-    for tag in response.aggregations.by_guid.buckets:
-        print(tag.key, tag.doc_count)
-        num_connected = tag.doc_count
-        if not num_connected >= minpeers:
-            print 'FAIL: one client only connected to %d (of %d) other nodes"' % \
-                (num_connected, minpeers)
-            passed = False
-    if passed:
-        print 'PASS: all clients are connected at least to %d other nodes' % minpeers 
-    return passed
-
+        return 0
 
 def consensus2():
     """

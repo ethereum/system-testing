@@ -3,11 +3,10 @@ import time
 import pytest
 from base import Inventory
 from clients import start_clients, stop_clients
-from eshelper import consensus, log_scenario, check_connection
 import random
 import time
 import sys
-from eshelper import consensus, log_scenario, check_connection
+from eshelper import consensus, log_scenario, assert_connected 
 
 state_durations = dict(stopped=(1, 10), running=(10, 30))
 test_time = 60
@@ -105,7 +104,7 @@ def client_count():
 
 
 def test_consensus(client_count):
-    assert check_connection(minconnected=client_count, minpeers=client_count-2)
+    assert_connected(minconnected=client_count, minpeers=client_count-2)
     num_agreeing_clients = consensus(offset=max_time_to_reach_consensus)
     print '%d out of %d clients are on the same chain' % (num_agreeing_clients,
                                                           client_count)

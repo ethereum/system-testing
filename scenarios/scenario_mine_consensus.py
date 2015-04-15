@@ -5,7 +5,7 @@ from base import Inventory
 from clients import start_clients, stop_clients
 import nodeid_tool
 from elasticsearch_dsl import Search
-from eshelper import client, pprint, F, log_scenario, check_connection, consensus, assert_mining
+from eshelper import *
 
 
 scenario_run_time_s = 100
@@ -58,18 +58,18 @@ def clients():
     inventory = Inventory()
     return inventory.clients
 
-
+def test_startup(clients):
+    assert_started(minstarted=len(clients))
 
 
 def test_connections(clients):
-    assert check_connection(minconnected=len(clients), minpeers=len(clients)-2)
+    assert_connected(minconnected=len(clients), minpeers=len(clients)-2)
 
 def test_mining_started(clients):
     assert_mining(minmining=len(clients))
 
 def test_consensus(clients):
     client_count = len(clients)
-    assert check_connection(minconnected=client_count, minpeers=client_count-2)
     num_agreeing_clients = consensus()
     print '%d out of %d clients are on the same chain' % (num_agreeing_clients,
                                                           client_count)
