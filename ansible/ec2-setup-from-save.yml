@@ -1,5 +1,5 @@
 ---
-- name: Provision EC2 instances from scratch
+- name: Provision EC2 instances from previously saved state
   hosts: localhost
   gather_facts: false
   roles:
@@ -8,4 +8,4 @@
   tasks:
       - include: roles/ec2/tasks/setup.yml
         vars:
-          ami_client: {{ ec2_image_clean[ec2_region] }} 
+          ami_client: "{{ ec2_image_clone_client[ec2_region] }}"

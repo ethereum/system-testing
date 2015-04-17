@@ -1,0 +1,12 @@
+---
+- name: Saves client instance state
+  hosts: tag_Name_ST-host-00000
+  roles:
+    - ec2
+
+  tasks:
+    # to get the instance id
+    - ec2_facts:
+    - include: roles/ec2/tasks/ami.yml
+      vars:
+        type: client

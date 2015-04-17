@@ -63,7 +63,7 @@
   ec2:  
     group: "{{ ec2_security_group }}"
     instance_type: "{{ ec2_instance_type }}" 
-    image: "{{ ec2_image[ec2_region] }}" 
+    image: "{{ ec2_image_clean[ec2_region] }}" 
     wait: true 
     region: "{{ ec2_region }}"
     key_name: "{{ ec2_keypair }}"
@@ -81,7 +81,7 @@
   ec2:  
     group: "{{ ec2_security_group }}"
     instance_type: "{{ ec2_instance_type }}" 
-    image: "{{ ec2_image[ec2_region] }}" 
+    image: "{{ ami_client }}"
     wait: true
     region: "{{ ec2_region }}"
     key_name: "{{ ec2_keypair }}"
@@ -97,7 +97,7 @@
   ec2:  
     group: ["{{ ec2_security_group }}", elarch] 
     instance_type: r3.xlarge # elarch needs a lot of RAM
-    image: "{{ ec2_image[ec2_region] }}" 
+    image: "{{ ec2_image_clean[ec2_region] }}" 
     wait: true 
     region: "{{ ec2_region }}"
     key_name: "{{ ec2_keypair }}"

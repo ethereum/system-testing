@@ -4,12 +4,21 @@
 # c3 instead of c4, it has ssd storage
 ec2_instance_type:      c3.large
 ec2_security_group:     system-testing
-ec2_image:              
+ec2_image_clean:              
   us-west-1:            ami-076e6542
   us-west-2:            ami-29ebb519
   us-east-1:            ami-9eaa1cf6
   eu-central-1:         ami-9a380b87
   ap-southeast-1:       ami-ca381398
+
+# the following ami values will be automatically updated by playbooks
+ec2_image_clone_client:              
+  us-west-1:            ami-undefined
+  us-west-2:            ami-undefined
+  us-east-1:            ami-0ef0f566
+  eu-central-1:         ami-undefined
+  ap-southeast-1:       ami-undefined
+
 ec2_region:             us-west-1
 ec2_keypair:            system-testing
 
