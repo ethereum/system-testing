@@ -15,7 +15,23 @@ ec2_image_clean:
 ec2_image_clone_client:              
   us-west-1:            ami-undefined
   us-west-2:            ami-undefined
-  us-east-1:            ami-0ef0f566
+  us-east-1:            ami-f2292d9a
+  eu-central-1:         ami-undefined
+  ap-southeast-1:       ami-undefined
+
+# the following ami values will be automatically updated by playbooks
+ec2_image_clone_boot:              
+  us-west-1:            ami-undefined
+  us-west-2:            ami-undefined
+  us-east-1:            ami-f4292d9c
+  eu-central-1:         ami-undefined
+  ap-southeast-1:       ami-undefined
+
+# the following ami values will be automatically updated by playbooks
+ec2_image_clone_elarch:              
+  us-west-1:            ami-undefined
+  us-west-2:            ami-undefined
+  us-east-1:            ami-c8292da0
   eu-central-1:         ami-undefined
   ap-southeast-1:       ami-undefined
 

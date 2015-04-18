@@ -11,12 +11,6 @@
   sudo: yes
   shell: cd /tmp/docker-elasticsearch && docker build --rm -t local/elasticsearch:1.4.4 .
 
-- name: Deploy elasticsearch instance
-  sudo: yes
-  docker: 
-      image: local/elasticsearch:1.4.4
-      name: elasticsearch
-      ports: ["9200:9200", "9300:9300"]
 
 - name: Prepare building kibana4 image
   copy: src=../files/docker-kibana4 dest=/tmp
@@ -30,10 +24,5 @@
   sudo: yes
   shell: cd /tmp/docker-kibana4 && docker build --rm -t local/kibana4:snapshot4.10 .
 
-- name: Deploy kibana4 instance
-  sudo: yes
-  docker: 
-      image: local/kibana4:snapshot4.10
-      name: kibana4
-      links: elasticsearch:elasticsearch
-      ports: ["80:5601"]
+
+- include: start.yml

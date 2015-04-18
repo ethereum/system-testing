@@ -1,0 +1,15 @@
+---
+- name: Start elasticsearch instance
+  sudo: yes
+  docker: 
+      image: local/elasticsearch:1.4.4
+      name: elasticsearch
+      ports: ["9200:9200", "9300:9300"]
+
+- name: Start kibana4 instance
+  sudo: yes
+  docker: 
+      image: local/kibana4:snapshot4.10
+      name: kibana4
+      links: elasticsearch:elasticsearch
+      ports: ["80:5601"]

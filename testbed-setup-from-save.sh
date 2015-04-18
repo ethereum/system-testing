@@ -8,7 +8,6 @@ if ! grep --silent '\[Credentials\]' ~/.boto; then
 	exit -1
 fi
 
-echo "This will only work if instance configuration was previously saved for this region!"
 
 cd $SCRIPTDIR/ansible
 
@@ -16,10 +15,11 @@ cd $SCRIPTDIR/ansible
 sed --in-place=.bak "s/^regions =.*/regions = $EC2_REGION/" inventory/ec2.ini
 
 echo "Setting up in $EC2_REGION region from previously saved state."
+echo "This will only work if instance configuration was previously saved for this region!"
+read -p "[Enter] to continue if region is right."
 
 ansible-playbook ec2-setup-from-save.yml --extra-vars=ec2_region=$EC2_REGION --inventory-file=inventory/hosts && \
-# check for newer implememntations, still needs to create dag
-ansible-playbook client-setup.yml && \
-ansible-playbook client-setup-bootstrap.yml && \  
+# still needs to create dag
+ansible-playbook client-prepare.yml  && \
 ansible-playbook client-start-bootstrap.yml && \
-ansible-playbook elarch-setup.yml 	
+ansible-playbook elarch-start.yml

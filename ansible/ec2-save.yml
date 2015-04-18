@@ -10,3 +10,27 @@
     - include: roles/ec2/tasks/ami.yml
       vars:
         type: client
+
+- name: Saves boot instance state
+  hosts: tag_Name_ST-boot-00000
+  roles:
+    - ec2
+
+  tasks:
+    # to get the instance id
+    - ec2_facts:
+    - include: roles/ec2/tasks/ami.yml
+      vars:
+        type: boot
+
+- name: Saves elarch instance state
+  hosts: tag_Name_ST-elarch
+  roles:
+    - ec2
+
+  tasks:
+    # to get the instance id
+    - ec2_facts:
+    - include: roles/ec2/tasks/ami.yml
+      vars:
+        type: elarch

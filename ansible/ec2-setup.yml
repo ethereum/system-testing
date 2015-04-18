@@ -9,3 +9,5 @@
       - include: roles/ec2/tasks/setup.yml
         vars:
           ami_client: {{ ec2_image_clean[ec2_region] }} 
+          ami_boot:   {{ ec2_image_clean[ec2_region] }} 
+          ami_elarch: {{ ec2_image_clean[ec2_region] }} 
