@@ -8,4 +8,4 @@
   async: 1000
   poll: 20
   # ethhash is expected to be in /tmp/dag
-  shell: docker run --rm --volume=/mnt/docker-eth:/tmp {{ g_docker_work_image['go'] }} makedag
+  shell: docker run --rm --volume=/mnt/docker-eth:/tmp --entrypoint="/usr/bin/geth" {{ g_docker_work_image['go'] }} makedag
