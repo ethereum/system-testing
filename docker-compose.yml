@@ -1,0 +1,4 @@
+testing:
+  image: ethereum/system-testing
+  volumes:
+    - "~/.boto:/root/.boto"
