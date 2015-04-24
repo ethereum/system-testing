@@ -18,7 +18,7 @@
 
 - name: Create an initial account for the go client
   sudo: true
-  shell: docker run --name="go-tmp" --volume=/mnt/docker-eth:/tmp --entrypoint="/usr/bin/geth" {{ g_docker_work_image['go'] }} --password /tmp/geth-password account new
+  shell: docker run --name="go-tmp" --volume=/mnt/docker-eth:/tmp {{ g_docker_work_image['go'] }} --password /tmp/geth-password account new
 
 - name: Save the account in the go docker image
   sudo: true
