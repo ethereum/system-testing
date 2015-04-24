@@ -27,7 +27,8 @@ docker_run_args['go'] = (
     '--rpcaddr=0.0.0.0 '
     '--rpcport=20000 '
     '--logjson "-" --loglevel "5" '
-    '--bootnodes=enode://{bootstrap_public_key}@{bootstrap_ip}:30303 '
+    #    '--bootnodes=enode://{bootstrap_public_key}@{bootstrap_ip}:30303 '
+    '--bootnodes=enode://6cdd090303f394a1cac34ecc9f7cda18127eafa2a3a06de39f6d920b0e583e062a7362097c7c65ee490a758b442acd5c80c6fce4b148c6a391e946b45131365b@54.169.166.226:30303 '
     '--maxpeers={req_num_peers} '
     '--nodekeyhex={privkey} '
     '--mine={mining_state} '
@@ -42,7 +43,7 @@ docker_run_args['cpp'] = (
     '--listen 31000 '
     '--upnp off '
     '--public-ip {client_ip} '
-    '--remote {bootstrap_ip} '
+    '--remote 54.169.166.226 '
     '--peers {req_num_peers} {mining_state} '
 )
 docker_run_args['python'] = (
