@@ -13,8 +13,6 @@ RUN apt-get install -q -y wget vim git
 
 # Install requirements
 RUN apt-get install -q -y libfreetype6-dev python python-dev python-pygraphviz pkg-config
-# matplotlib workaround for 
-RUN ln -s /usr/include/freetype2/ft2build.h /usr/include/
 
 # Install pip
 RUN wget https://bootstrap.pypa.io/get-pip.py
