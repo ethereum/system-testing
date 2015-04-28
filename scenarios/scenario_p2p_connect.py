@@ -1,17 +1,14 @@
 import time
-from elasticsearch_dsl import Search
 import pytest
-from base import Inventory
-from clients import start_clients, stop_clients
-import nodeid_tool
 from elasticsearch_dsl import Search
-from eshelper import client, pprint, F, log_scenario, assert_started, assert_connected
-
-### scenario configuartion
+from testing import nodeid_tool
+from testing.testing import Inventory
+from testing.clients import start_clients, stop_clients
+from logutils.eshelper import client, F, log_scenario, assert_started, assert_connected
 
 # to how many peers should a connection be established
 req_peer = 5
-enable_mining=False
+enable_mining = False
 scenario_run_time_s = 45
 impls = ['go']
 # 0 is go bootstrap, 1 is cpp bootstrap
@@ -43,8 +40,8 @@ def run(run_clients):
     clients = inventory.clients
 
     log_event('starting.clients.sequentially')
-    for client in clients:
-        start_clients(clients=[client], req_num_peers=req_peer, impls=impls, boot=boot, enable_mining=enable_mining)
+    for client_ in clients:
+        start_clients(clients=[client_], req_num_peers=req_peer, impls=impls, boot=boot, enable_mining=enable_mining)
         time.sleep(1)
     log_event('starting.clients.sequentially.done')
 
@@ -70,8 +67,8 @@ def test_started(clients):
     assert_started(len(clients))
 
 def test_connections(clients):
-    assert_connected(minconnected=len(clients), minpeers=len(clients)-2)
-    
+    assert_connected(minconnected=len(clients), minpeers=len(clients) - 2)
+
     guids = [nodeid_tool.topub(ext_id.encode('utf-8')) for ext_id in clients]
     for guid in guids:
         s = Search(client)

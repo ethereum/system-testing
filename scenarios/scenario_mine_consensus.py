@@ -1,11 +1,8 @@
 import time
-from elasticsearch_dsl import Search
 import pytest
-from base import Inventory
-from clients import start_clients, stop_clients
-import nodeid_tool
-from elasticsearch_dsl import Search
-from eshelper import *
+from testing.testing import Inventory
+from testing.clients import start_clients, stop_clients
+from logutils.eshelper import log_scenario, consensus, assert_started, assert_connected, assert_mining
 
 
 scenario_run_time_s = 100
@@ -58,12 +55,12 @@ def clients():
     inventory = Inventory()
     return inventory.clients
 
+
 def test_startup(clients):
     assert_started(minstarted=len(clients))
 
-
 def test_connections(clients):
-    assert_connected(minconnected=len(clients), minpeers=len(clients)-2)
+    assert_connected(minconnected=len(clients), minpeers=len(clients) - 2)
 
 def test_mining_started(clients):
     assert_mining(minmining=len(clients))

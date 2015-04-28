@@ -1,1 +1,0 @@
-../ansible/inventory/ec2.py

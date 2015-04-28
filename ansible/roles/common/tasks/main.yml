@@ -1,7 +1,0 @@
----
-- name: Install some common tools
-  sudo: true
-  apt: name={{ item }} 
-  with_items:
-      - htop
-      - vim

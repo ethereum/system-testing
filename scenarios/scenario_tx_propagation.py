@@ -1,20 +1,20 @@
 import time
 import pytest
-from base import Inventory
-import nodeid_tool
-from clients import start_clients, stop_clients
-from eshelper import tx_propagation, log_scenario
+from testing import nodeid_tool
+from testing.testing import Inventory
+from testing.clients import start_clients, stop_clients
+from logutils.eshelper import tx_propagation, log_scenario
 from rpc import coinbase, balance, transact
 
 max_time_to_reach_consensus = 10
-impl=['go']
+impls = ['go']
+stop_clients_at_scenario_end = False
 
 def Ox(x):
     return '0x' + x
 
 def log_event(event, **kwargs):
     log_scenario(name='tx_propagation', event=event, **kwargs)
-
 
 
 @pytest.fixture(scope='module', autouse=True)
@@ -40,7 +40,7 @@ def run(run_clients):
     # log_event('stopping_clients.done')
 
     log_event('starting_one_client')
-    start_clients(clients=clients[:1], impls=impl)
+    start_clients(clients=clients[:1], impls=impls)
     log_event('starting_one_client.done')
     print 'mine a bit'
     blocktime = 12
@@ -51,7 +51,7 @@ def run(run_clients):
 
     # start other clients
     log_event('starting_other_clients')
-    start_clients(clients=clients[1:],impls=impl)
+    start_clients(clients=clients[1:], impls=impls)
     log_event('starting_other_clients.done')
 
     # create tx
@@ -66,7 +66,7 @@ def run(run_clients):
     receiving_address = Ox(nodeid_tool.coinbase(str(recipient)))
 
     print 'sending addr %s, receiving addr %s' % (sending_address, receiving_address)
-    
+
     value = 100
     # print balance(endpoint, sending_address)
     # this fails randomly, why ?
@@ -80,6 +80,10 @@ def run(run_clients):
     time.sleep(max_time_to_reach_consensus)
     log_event('waiting.done')
 
+    if stop_clients_at_scenario_end:
+        log_event('stopping_clients')
+        stop_clients(clients=clients, impls=impls)
+        log_event('stopping_clients.done')
 
 @pytest.fixture(scope='module')
 def client_count():
@@ -94,6 +98,6 @@ def test_propagation(client_count):
     """Check that all clients have received the transaction."""
     num_agreeing_clients = tx_propagation(offset=max_time_to_reach_consensus * 2)
     # stop_clients(clients=clients, impl=impl)
-    assert num_agreeing_clients == client_count, 'only %d (of %d) clients '  \
-           'received a transaction' % (num_agreeing_clients, client_count)
+    assert num_agreeing_clients == client_count, 'only %d (of %d) clients received a transaction' % (
+        num_agreeing_clients, client_count)
     print 'PASS: all %d clients received a transaction' % client_count

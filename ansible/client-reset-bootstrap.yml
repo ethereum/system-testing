@@ -1,8 +1,0 @@
----
-- name: Reset state on all clients 
-  hosts: tag_Role_ST-bootstrap 
-  remote_user: ubuntu
-  gather_facts: false
-  
-  tasks:
-    - include: roles/boot/tasks/reset.yml

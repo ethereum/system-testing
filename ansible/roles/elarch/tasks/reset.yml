@@ -1,4 +1,0 @@
----
-- name: delete all indices from elastic search database
-  shell: curl -XDELETE "http://{{ groups['tag_Name_ST-elarch'][0] }}:9200/_all"
-
