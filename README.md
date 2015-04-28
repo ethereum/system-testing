@@ -3,7 +3,7 @@ system-testing
 
 Testing ethereum clients in dedicated networks. More info in the [wiki](https://github.com/ethereum/system-testing/wiki).
 
-Tests are deployed via Ansible on Amazon EC2 instances.
+Tests are deployed via `docker-machine` on Amazon EC2 instances.
 
 ### Installing necessary software
 
@@ -22,13 +22,13 @@ docker run -v ~/.boto:/root/.boto -it ethereum/system-testing
 ```
 
 
-#### Directly on Ubuntu
+#### Directly
 ```
-sudo apt-get install libfreetype6-dev python-pygraphviz python python-dev python-pip python-virtualenv
+apt-get install libfreetype6-dev python-pygraphviz python python-dev python-pip python-virtualenv
 git clone https://github.com/ethereum/system-testing.git
 cd system-testing
-virtualenv venv
-source venv/bin/activate
+virtualenv venv  # optional
+source venv/bin/activate  # optional
 pip install -e .
 ```
 
