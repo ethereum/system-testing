@@ -31,6 +31,10 @@ RUN pip install -r requirements.txt
 # Install ipython
 RUN apt-get install -q -y ipython
 
+# Install docker-compose
+RUN wget -O /usr/bin/docker-compose https://github.com/docker/compose/releases/download/1.2.0/docker-compose-`uname -s`-`uname -m`
+RUN chmod +x /usr/bin/docker-compose
+
 # Install system-testing
 ADD . system-testing
 WORKDIR system-testing

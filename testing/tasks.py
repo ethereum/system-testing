@@ -5,7 +5,8 @@ import time
 import json
 import logging
 import boto.ec2
-from fabric.api import settings, task, local, abort, shell_env
+from contextlib import contextmanager
+from fabric.api import settings, lcd, task, local, abort, shell_env
 import futures
 import ConfigParser
 from os.path import expanduser
@@ -28,6 +29,14 @@ if AWS_ACCESS_KEY is None or AWS_SECRET_KEY is None:
 
 implementations = ["cpp", "go", "python"]
 
+@contextmanager
+def rollback(nodenames):
+    try:
+        yield
+    except SystemExit:
+        teardown(nodenames)
+        abort("Bad failure...")
+
 def docker(cmd, capture=False):
     """
     Run Docker command
@@ -48,7 +57,7 @@ def machine_list():
     return machine("ls", capture=True)
 
 @task
-def create(vpc, region, zone, nodename, ami=None):
+def create(vpc, region, zone, nodename, ami=None, securitygroup="system-testing"):
     """
     Launch an AWS instance
     """
@@ -60,7 +69,7 @@ def create(vpc, region, zone, nodename, ami=None):
              "--amazonec2-region %s "
              "--amazonec2-zone %s "
              "--amazonec2-root-size 8 "
-             "--amazonec2-security-group system-testing "
+             "--amazonec2-security-group %s "
              "%s"
              "%s" % (
                  AWS_ACCESS_KEY,
@@ -68,6 +77,7 @@ def create(vpc, region, zone, nodename, ami=None):
                  vpc,
                  region,
                  zone,
+                 securitygroup,
                  ("--amazonec2-ami %s " % ami) if ami else "",
                  nodename)))
 
@@ -178,6 +188,18 @@ def build_on(nodename, client, tag):
         build(tag, client)
 
 @task
+def compose_on(nodename, command):
+    env = machine_env(nodename)
+    if not env:
+        abort("Error getting machine environment")
+    with shell_env(DOCKER_TLS_VERIFY=env['tls'], DOCKER_CERT_PATH=env['cert_path'], DOCKER_HOST=env['host']):
+        local("docker-compose %s" % command)
+
+@task
+def ssh_on(nodename, command):
+    machine("ssh %s -- %s" % (nodename, command))
+
+@task
 def launch_prepare_nodes(vpc, region, zone, clients=implementations):
     """
     Launch nodes to prepare AMIs using create()
@@ -232,6 +254,56 @@ def prepare_nodes(region, zone, clients=implementations, images=None):
     logger.info("Prepare duration: %ss" % (time.time() - start))
 
     return ami_ids
+
+@task
+def setup_es(vpc, region, zone, user, passwd):
+    # TODO per-user naming
+    nodename = "elasticsearch"
+
+    with settings(warn_only=False):
+        with rollback([nodename]):
+            # Launch ES node
+            create(vpc, region, zone, nodename, securitygroup="elarch")
+
+            # Get elk-compose
+            local("git clone --depth=1 https://github.com/caktux/elk-compose.git")
+
+            # Generate certificate and key for logstash-forwarder
+            local("openssl req -x509 -batch -nodes -newkey rsa:2048 "
+                  "-keyout elk-compose/logstash/conf/logstash-forwarder.key "
+                  "-out elk-compose/logstash/conf/logstash-forwarder.crt "
+                  "-subj /CN=logs.ethdev.com")
+
+            # Install htpasswd
+            local("sudo apt-get install -q -y apache2-utils")
+
+            # Create htpasswd
+            local("htpasswd -cb elk-compose/nginx/conf/htpasswd %s %s" % (user, passwd))
+
+            # Build ELK stack
+            with lcd('elk-compose'):
+                compose_on(nodename, "build")
+
+            # Run ELK stack
+            with lcd('elk-compose'):
+                compose_on(nodename, "up -d")
+
+    # Get our node IP
+    es = {}
+    machines = machine_list().splitlines()[1:]
+    for mach in machines:
+        fields = mach.split()
+        ip = fields[-1][6:-5]
+        if mach.startswith(nodename):
+            es['ip'] = ip
+    if not es:
+        abort("Could not find our ElasticSearch node, aborting...")
+
+    # Save our ES node IP
+    with open('es.json', 'w') as f:
+        json.dump(es, f)
+
+    return es['ip']
 
 @task
 def bootstrap(vpc, region, zone, ami_ids, nodes):

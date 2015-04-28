@@ -13,10 +13,10 @@ import os
 import json
 import logging
 from glob import glob
-from contextlib import contextmanager
+from getpass import getpass
 from fabric.api import settings, abort  # task, env, run, prompt, cd, get, put, runs_once, sudo
 from fabric.contrib.console import confirm  # from fabric.utils import error, puts, fastprint
-from tasks import machine_list, bootstrap, launch_prepare_nodes, prepare_nodes, run_scenarios, teardown
+from tasks import machine_list, setup_es, bootstrap, launch_prepare_nodes, prepare_nodes, run_scenarios, rollback, teardown
 from argparse import ArgumentParser
 from . import __version__
 
@@ -65,7 +65,7 @@ def parse_arguments(parser):
         help="Base PyEthApp image to use (default: %(default)s)")
     parser.add_argument(
         "-e", "--es",
-        default="52.4.55.33",
+        default=None,
         dest="elasticsearch",
         help="IP of the ElasticSearch node (default: %(default)s)")
     parser.add_argument(
@@ -96,10 +96,15 @@ def parse_arguments(parser):
         dest="scenarios",
         nargs="*",
         help="Scenarios to test (default: %(default)s)")
-    # parser.add_argument(
-    #     "scenarios",
-    #     nargs='+',
-    #     help="Extra scenarios to test")
+    parser.add_argument(
+        "command",
+        choices=["ls", "rm"],
+        nargs='?',
+        help="Optional commands for maintenance")
+    parser.add_argument(
+        "parameters",
+        nargs='*',
+        help="Optional parameters")
 
     return parser.parse_args()
 
@@ -110,9 +115,16 @@ class Inventory(object):
 
         self.instances = machines['instances']
         self.bootnodes = machines['bootnodes']
-        self.es = '...'
         self.clients = machines['clients']
         # self.roles = machines.roles
+        if not machines['es']:
+            try:
+                with open('es.json', 'r') as f:
+                    es = json.load(f)
+                machines['es'] = es['ip']
+            except:
+                machines['es'] = None
+        self.es = machines['es']
 
     def parse_machines(self):
         machines = machine_list().splitlines()[1:]
@@ -120,33 +132,25 @@ class Inventory(object):
         instances = []
         bootnodes = []
         clients = []
+        es = None
 
         for mach in machines:
+            fields = mach.split()
+            ip = fields[-1][6:-5]
+            instances.append({fields[0]: ip})
             if mach.startswith('bootnode'):
-                fields = mach.split()
-                ip = fields[-1][6:-5]
-                instances.append({fields[0]: ip})
                 bootnodes.append(ip)
             elif mach.startswith('testnode'):
-                fields = mach.split()
-                ip = fields[-1][6:-5]
-                instances.append({fields[0]: ip})
                 clients.append(ip)
+            elif mach.startswith('elasticsearch'):
+                es = ip
 
         parsed['bootnodes'] = bootnodes
         parsed['clients'] = clients
         parsed['instances'] = instances
+        parsed['es'] = es
 
         return parsed
-
-
-@contextmanager
-def rollback(nodenames):
-    try:
-        yield
-    except SystemExit:
-        teardown(nodenames)
-        abort("Bad failure...")
 
 
 def main():
@@ -168,13 +172,39 @@ def main():
     logger.info("Ethereum system-testing %s", __version__)
     logger.info("=====\n")
 
+    # Ask to setup ES node
+    es = None
+    if not args.elasticsearch:
+        try:
+            with open('es.json', 'r') as f:
+                es = json.load(f)
+            es = es['ip']
+        except:
+            if confirm("No ElasticSearch node was found, set one up?"):
+                user = raw_input("Choose a username for Kibana: ")
+                passwd = getpass("Choose a password: ")
+                cpasswd = getpass("Confirm password: ")
+                if passwd != cpasswd:
+                    abort("Password doesn't match, aborting...")
+                es = setup_es(args.vpc, args.region, args.zone, user, passwd)
+            else:
+                if confirm("Abort?"):
+                    abort("Aborting...")
+                else:
+                    logger.warn("Running without ElasticSearch, tests will fail!")
+    else:
+        with open('es.json', 'w') as f:
+            save_es = {'ip': args.elasticsearch}
+            json.dump(save_es, f)
+        es = args.elasticsearch
+
     # Total nodes
     total = args.cpp_nodes + args.go_nodes + args.python_nodes
 
-    # TODO Ask to setup ES node
-
     # Confirm setup parameters
-    if not confirm("Setting up %s node%s (%s C++, %s Go, %s Python) in %s%s region, running scenarios: %s. Continue?" % (
+    if not confirm("Setting up %s node%s (%s C++, %s Go, %s Python) in %s%s region, "
+                   "logging to ElasticSearch node at %s, "
+                   "running scenarios: %s. Continue?" % (
             total,
             ("s" if total > 1 else ""),
             args.cpp_nodes,
@@ -182,6 +212,7 @@ def main():
             args.python_nodes,
             args.region,
             args.zone,
+            es,
             args.scenarios)):
         logger.warn("Aborting...")
         raise SystemExit
