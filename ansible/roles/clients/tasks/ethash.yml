@@ -8,4 +8,11 @@
   async: 1000
   poll: 20
   # ethhash is expected to be in /tmp/dag
-  shell: docker run --rm --volume=/mnt/docker-eth:/tmp {{ g_docker_work_image['go'] }} makedag
+  shell: docker run --rm --volume=/mnt/docker-eth:{{ dag_dir['go'] }} {{ g_docker_work_image['go'] }} makedag
+
+- name: create the ethash (dag) from eth c++
+  sudo: true
+  async: 1000
+  poll: 20
+  # ethhash is expected to be in /root/.ethash
+  shell: docker run --rm --volume=/mnt/docker-eth:{{ dag_dir['cpp'] }} {{ g_docker_work_image['cpp'] }} --create-dag this

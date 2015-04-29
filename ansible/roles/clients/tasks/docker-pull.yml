@@ -12,12 +12,18 @@
   changed_when: '"Downloaded newer image" in docker_pull_out.stdout'
 
   
-- name: Prepare updates to geth for system testing
-  copy: src=../files/docker-go-clean dest=/tmp
+- name: Prepare updates to (g)eth for system testing
+  copy: src=../files/docker-{{ item }}-clean dest=/tmp
+  with_items:
+    - go
+    - cpp
 
 - name: Build updated geth image for system testing locally 
   sudo: yes
   docker_image:
-    path: /tmp/docker-go-clean
-    name: "{{ g_docker_clean_image['go'] }}"
+    path: /tmp/docker-{{ item }}-clean
+    name: "{{ g_docker_clean_image[item] }}"
     state: build
+  with_items:
+    - go
+    - cpp

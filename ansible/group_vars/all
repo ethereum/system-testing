@@ -14,10 +14,10 @@ g_docker_hub_image:
   python: sveneh/pyethereum-develop
 
 # in case the hub image is not usable for system testing, it needs to be altered locally
-# only relevant for go client, as the official hub images runs via supervisord
+# relevant when the official hub images runs via supervisord
 g_docker_clean_image:
   go:     local/client-go
-  cpp:    ethereum/client-cpp
+  cpp:    local/client-cpp
   python: sveneh/pyethereum-develop
 
 # the docker image where state is stored during a scenario run

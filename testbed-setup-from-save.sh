@@ -20,7 +20,7 @@ echo "This will only work if instance configuration was previously saved for thi
 read -p "[Enter] to continue if region is right."
 
 ansible-playbook ec2-setup-from-save.yml --extra-vars=ec2_region=$EC2_REGION --inventory-file=inventory/hosts
-.inventory/ec2.py --refresh-cache 
+./inventory/ec2.py --refresh-cache 
 ansible-playbook client-prepare.yml
 ansible-playbook client-start-bootstrap.yml
 ansible-playbook elarch-start.yml

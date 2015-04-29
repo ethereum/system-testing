@@ -37,7 +37,8 @@
 
 - name: install docker python API
   sudo: true
-  pip: name=docker-py
+  # docker-py > 1.1 break the API ansible uses
+  pip: name=docker-py version=1.1.0
 
 - name: enable docker for standard user
   sudo: true

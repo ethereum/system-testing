@@ -15,7 +15,7 @@ ec2_image_clean:
 ec2_image_clone_client:              
   us-west-1:            ami-undefined
   us-west-2:            ami-undefined
-  us-east-1:            ami-f2292d9a
+  us-east-1:            ami-58707f30
   eu-central-1:         ami-undefined
   ap-southeast-1:       ami-undefined
 
@@ -23,7 +23,7 @@ ec2_image_clone_client:
 ec2_image_clone_boot:              
   us-west-1:            ami-undefined
   us-west-2:            ami-undefined
-  us-east-1:            ami-f4292d9c
+  us-east-1:            ami-5a707f32
   eu-central-1:         ami-undefined
   ap-southeast-1:       ami-undefined
 
@@ -31,7 +31,7 @@ ec2_image_clone_boot:
 ec2_image_clone_elarch:              
   us-west-1:            ami-undefined
   us-west-2:            ami-undefined
-  us-east-1:            ami-c8292da0
+  us-east-1:            ami-5c707f34
   eu-central-1:         ami-undefined
   ap-southeast-1:       ami-undefined
 

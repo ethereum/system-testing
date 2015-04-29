@@ -1,25 +1,26 @@
 ---
-- name: download / updates cpp client
+- name: download / updates (g)eth clients
   sudo: true
   # the official ansible docker module does not have the option to just pull the image, it will also run it
-  shell: docker pull {{ g_docker_hub_image['cpp'] }} 
-  register: docker_pull_out
-  changed_when: '"Downloaded newer image" in docker_pull_out.stdout'
-  tags:
-
-- name: download / updates latest Go clients base via docker
-  sudo: true
-  # the official ansible docker module does not have the option to just pull the image, it will also run it
-  shell: docker pull {{ g_docker_hub_image['go'] }} 
+  shell: docker pull {{ g_docker_hub_image[item] }} 
+  with_items:
+    - go
+    - cpp
   register: docker_pull_out
   changed_when: '"Downloaded newer image" in docker_pull_out.stdout'
 
-- name: Prepare updates to geth for system testing
-  copy: src=../files/docker-go-clean dest=/tmp
+- name: Prepare updates to (g)eth for system testing
+  copy: src=../files/docker-{{ item }}-clean dest=/tmp
+  with_items:
+    - go
+    - cpp
 
-- name: Build updated geth image for system testing locally 
+- name: Build updated (g)eth image for system testing locally 
   sudo: yes
   docker_image:
-    path: /tmp/docker-go-clean
-    name: "{{ g_docker_clean_image['go'] }}"
+    path: /tmp/docker-{{ item }}-clean
+    name: "{{ g_docker_clean_image[item] }}"
     state: build
+  with_items:
+    - go
+    - cpp
