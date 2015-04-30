@@ -8,6 +8,7 @@ from rpc import coinbase, balance, transact
 
 max_time_to_reach_consensus = 10
 impls = ['go']
+boot = 'bootnode-go-0'
 stop_clients_at_scenario_end = False
 
 def Ox(x):

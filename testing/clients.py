@@ -8,15 +8,23 @@ from fabric.api import task
 import nodeid_tool
 # from logutils.eshelper import log_scenario  # dumbass circular import...
 
-# Set options (daemonize and entrypoint)
-options = {
-    'cpp': '-d --entrypoint eth',
-    'go': '-d --entrypoint geth',
-    'python': '-d --entrypoint pyethapp',
-}
+# Docker run options (name, daemonize, ports, entrypoint)
+opts = {}
+opts['cpp'] = ('--name {nodename} -d '
+               '-p 30303:30303 -p 30303:30303/udp '
+               '--entrypoint eth')
 
-client_cmds = {}
-client_cmds['go'] = (
+opts['go'] = ('--name {nodename} -d '
+              '-p 30303:30303 -p 30303:30303/udp '
+              '--entrypoint geth')
+
+opts['python'] = ('--name {nodename} -d '
+                  '-p 30303:30303 -p 30303:30303/udp '
+                  '--entrypoint pyethapp')
+
+# Clients command line parameters
+cmds = {}
+cmds['go'] = (
     '--port=30000 '
     '--rpcaddr=0.0.0.0 '
     '--rpcport=20000 '
@@ -29,7 +37,7 @@ client_cmds['go'] = (
     '--unlock primary '
     '--password /tmp/geth-password '
 )
-client_cmds['cpp'] = (
+cmds['cpp'] = (
     '--verbosity 9 '
     '--structured-logging '
     '--json-rpc-port 21000 '
@@ -39,8 +47,8 @@ client_cmds['cpp'] = (
     '--remote {bootstrap_ip} '
     '--peers {req_num_peers} {mining_state} '
 )
-client_cmds['python'] = (
-    '--logging :debug '
+cmds['python'] = (
+    '--logging :DEBUG '
     '--log_json 1 '
     '--remote {bootstrap_ip} '
     '--port 30303 '
@@ -48,101 +56,126 @@ client_cmds['python'] = (
     '--peers {req_num_peers} '
     '--address {coinbase} '
 )
-teees_args = '{elarch_ip} guid,{pubkey_hex}'
 
-mining_cpu_percentage = 50
+
+# teees arguments
+teees_args = '{elasticsearch_ip} guid,{pubkey_hex}'
+
+mining_percentage = 50
 
 def create_clients_config(inventory):
     clients_config = dict()
 
-    for i, ip in enumerate(inventory.clients):
-        clients_config[ip] = dict()
-        for impl in ['go', 'cpp', 'python']:
-            clients_config[ip][impl] = dict()
-            ext_id = "testnode-%s-%s" % (impl, i)
-            clients_config[ip][impl]['ext_id'] = ext_id
-            clients_config[ip][impl]['pubkey'] = nodeid_tool.topub(ext_id)
-            clients_config[ip][impl]['privkey'] = nodeid_tool.topriv(ext_id)
-            clients_config[ip][impl]['coinbase'] = nodeid_tool.coinbase(ext_id)
+    for nodename, ip in inventory.clients.items():
+        clients_config[nodename] = dict()
+        impl = nodename.split("-")[1]
+        # for impl in ['go', 'cpp', 'python']:
+        clients_config[nodename]['ip'] = ip
+        clients_config[nodename]['impl'] = impl
+        clients_config[nodename]['nodename'] = nodename
+        clients_config[nodename]['pubkey'] = nodeid_tool.topub(nodename)
+        clients_config[nodename]['privkey'] = nodeid_tool.topriv(nodename)
+        clients_config[nodename]['coinbase'] = nodeid_tool.coinbase(nodename)
     return clients_config
 
 def create_guid_lookup_table(inventory, client_config):
     guid_lookup_table = dict()
-    for ip in client_config:
-        for impl in client_config[ip]:
-            guid = client_config[ip][impl]['pubkey']
-            host = client_config[ip][impl]['ext_id']
-            guid_lookup_table[guid] = {'guid_short': guid[0:7] + '...', 'host': host, 'ip': ip, 'impl': impl}
+    for nodename in client_config:
+        ip = client_config[nodename]['ip']
+        impl = client_config[nodename]['impl']
+        guid = client_config[nodename]['pubkey']
+        host = client_config[nodename]['nodename']
+        guid_lookup_table[guid] = {'guid_short': guid[0:7] + '...', 'host': host, 'ip': ip, 'impl': impl}
     return guid_lookup_table
 
 inventory = Inventory()
 clients_config = create_clients_config(inventory)
 guid_lookup_table = create_guid_lookup_table(inventory, clients_config)
 
-def get_boot_ip_pk(inventory, boot=0):
+def get_boot_ip_pk(inventory, boot='bootnode-go-0'):
     d = dict(ip=inventory.bootnodes[boot],
-             pk=nodeid_tool.topub("bootnode-%s" % boot))
+             pk=nodeid_tool.topub(boot))
     return d
 
 @task
-def start_clients(clients=[], impls=[], images=None, req_num_peers=7, boot=0, enable_mining=True):
+def start_clients(clients=[], impls=[], images=None, req_num_peers=7, boot='bootnode-go-0', enable_mining=True):
     """
-    Start all clients with a custom config (nodeid)
+    Start all clients by IP with a custom config
     """
     inventory = Inventory()
-    if not clients:
-        for nodename, ip in inventory.instances:
-            if nodename.startswith('testnode'):
-                clients.append(nodename)
 
-    bootnode = get_boot_ip_pk(inventory, boot)
     assert inventory.es
     assert inventory.bootnodes
 
+    bootnode = get_boot_ip_pk(inventory, boot)
+
+    if not clients:
+        for nodename, ip in inventory.clients.items():
+            clients.append(ip)
+
+    options = {}
+    commands = {}
+    nodes = {'cpp': [], 'go': [], 'python': []}
+
+    # Generate per nodename options and commands
     for client in clients:
         assert client
 
-        commands = {}
-        commands['go'] = client_cmds['go'].format(bootstrap_public_key=bootnode['pk'],
-                                                  bootstrap_ip=bootnode['ip'],
-                                                  req_num_peers=req_num_peers,
-                                                  privkey=clients_config[client]['go']['privkey'],
-                                                  mining_state=enable_mining)
+        nodename = clients_config[client]['nodename']
+        impl = clients_config[client]['impl']
 
-        commands['cpp'] = client_cmds['cpp'].format(bootstrap_ip=bootnode['ip'],
+        if impl == 'go':
+            commands[nodename] = cmds['go'].format(bootstrap_public_key=bootnode['pk'],
+                                                   bootstrap_ip=bootnode['ip'],
+                                                   req_num_peers=req_num_peers,
+                                                   privkey=clients_config[client]['privkey'],
+                                                   mining_state=enable_mining)
+            options[nodename] = opts['go'].format(nodename=nodename)
+        elif impl == 'cpp':
+            commands[nodename] = cmds['cpp'].format(bootstrap_ip=bootnode['ip'],
                                                     client_ip=client,
                                                     req_num_peers=req_num_peers,
-                                                    mining_state='--force-mining --mining on' if enable_mining else '')
-
-        commands['python'] = client_cmds['python'].format(bootstrap_ip=bootnode['ip'],
-                                                          req_num_peers=req_num_peers,
-                                                          coinbase=clients_config[client]['python']['coinbase'],
-                                                          mining_state=mining_cpu_percentage if enable_mining else '0')
+                                                    mining_state='--force-mining '
+                                                                 '--mining on' if enable_mining else '')
+            options[nodename] = opts['cpp'].format(nodename=nodename)
+        elif impl == 'python':
+            commands[nodename] = cmds['python'].format(bootstrap_ip=bootnode['ip'],
+                                                       req_num_peers=req_num_peers,
+                                                       coinbase=clients_config[client]['coinbase'],
+                                                       mining_state=mining_percentage if enable_mining else '0')
+            options[nodename] = opts['python'].format(nodename=nodename)
+        else:
+            raise ValueError("No implementation: %s" % impl)
 
         # TODO teees or logstash-forwarder
         # for impl in ['go', 'cpp', 'python']:
         #     d['vars']['docker_run_args'][impl] = cmds[impl]
         #     d['vars']['docker_tee_args'][impl] = teees_args.format(
-        #         elarch_ip=inventory.es,
+        #         elasticsearch_ip=inventory.es,
         #         pubkey_hex=clients_config[client][impl]['pubkey'])
 
-    # Set options (daemonize and entrypoint)
-    options = {
-        'cpp': '-d --entrypoint eth',
-        'go': '-d --entrypoint geth',
-        'python': '-d --entrypoint pyethapp',
-    }
+        # Add nodename per implementation
+        nodes[impl].append(nodename)
 
-    run_containers(clients, images, options, commands)
+    # All nodes per implementation, with optional images, and all options and commands per nodename
+    run_containers(nodes, images, options, commands)
 
-def stop_clients(clients=[], impls=[], boot=0):
+def stop_clients(clients=[], impls=[]):
     inventory = Inventory()
+    nodenames = []
     if not clients:
-        for nodename, ip in inventory.instances:
+        for nodename, ip in inventory.clients.items():
             if nodename.startswith('testnode'):
-                clients.append(nodename)
+                nodenames.append(nodename)
+    else:
+        # Get nodenames from client IP
+        for nodename, ip in inventory.clients.items():
+            for client in clients:
+                if client == ip:
+                    nodenames.append(nodename)
 
-    stop_containers(clients)
+    if nodenames:
+        stop_containers(nodenames)
 
 #
 # # Circular import with log_scenario...

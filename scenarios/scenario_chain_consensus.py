@@ -10,8 +10,7 @@ test_time = 60
 max_time_to_reach_consensus = 10
 random.seed(42)
 impls = ['go']
-# 0 is go, 1 is cpp
-boot = 0
+boot = 'bootnode-go-0'
 num_scheduled_clients = 2
 
 def log_event(event, **kwargs):

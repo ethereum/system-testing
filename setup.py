@@ -21,6 +21,7 @@ setup(name="testing",
       author_email="caktux@gmail.com",
       url='https://github.com/ethereum/system-testing/',
       install_requires=[
+          "rpc",
           "argparse",
           "bitcoin",
           "boto",

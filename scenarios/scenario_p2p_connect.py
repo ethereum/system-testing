@@ -11,8 +11,7 @@ req_peer = 5
 enable_mining = False
 scenario_run_time_s = 45
 impls = ['go']
-# 0 is go bootstrap, 1 is cpp bootstrap
-boot = 0
+boot = 'bootnode-go-0'
 # if you want to evaluate client logs on the hosts, don't stop the clients
 stop_clients_at_scenario_end = False
 

@@ -7,8 +7,7 @@ from logutils.eshelper import log_scenario, consensus, assert_started, assert_co
 
 scenario_run_time_s = 100
 impls = ['go']
-# 0 is go bootstrap, 1 is cpp bootstrap
-boot = 0
+boot = 'bootnode-go-0'
 
 def log_event(event, **kwargs):
     log_scenario(name='mine', event=event, **kwargs)

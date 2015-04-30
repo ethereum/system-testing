@@ -11,16 +11,15 @@ Tests are deployed via `docker-machine` on Amazon EC2 instances.
 
 Add your AWS credentials in your local `~/.boto`, it will get mounted as a single-file volume inside the container.
 
-##### Running with `docker-compose` (`brew install docker-compose` or [official install docs](https://docs.docker.com/compose/install/)):
-```
-docker-compose run testing
-```
-
 ##### Running with `docker`:
 ```
 docker run -v ~/.boto:/root/.boto -it ethereum/system-testing
 ```
 
+##### Running with `docker-compose` (`brew install docker-compose` or [official install docs](https://docs.docker.com/compose/install/)):
+```
+docker-compose run testing
+```
 
 #### Directly
 ```
@@ -42,6 +41,11 @@ usage: testing [-h] [-v] [-c CPP_NODES] [--cpp-image CPP_IMAGE] [-g GO_NODES]
                [--python-image PYTHON_IMAGE] [-e ELASTICSEARCH] [-i VPC]
                [-r REGION] [-z ZONE] [-d DEBUG]
                [-s [{tx_propagation,chain_consensus,p2p_connect,mine_consensus} [{tx_propagation,chain_consensus,p2p_connect,mine_consensus} ...]]]
+               [{ls,cleanup}] [parameters [parameters ...]]
+
+positional arguments:
+  {ls,cleanup}          Optional commands for maintenance
+  parameters            Optional parameters
 
 optional arguments:
   -h, --help            show this help message and exit
@@ -59,7 +63,7 @@ optional arguments:
                         Base PyEthApp image to use (default: ethereum/client-
                         python)
   -e ELASTICSEARCH, --es ELASTICSEARCH
-                        IP of the ElasticSearch node (default: 52.4.55.33)
+                        IP of the ElasticSearch node (default: None)
   -i VPC, --vpc-id VPC  AWS VPC ID (default: vpc-3fe30e5a)
   -r REGION, --region REGION
                         AWS Region (default: us-east-1)
@@ -68,6 +72,11 @@ optional arguments:
                         Debug (default: False)
   -s [{tx_propagation,chain_consensus,p2p_connect,mine_consensus} [{tx_propagation,chain_consensus,p2p_connect,mine_consensus} ...]], --scenarios [{tx_propagation,chain_consensus,p2p_connect,mine_consensus} [{tx_propagation,chain_consensus,p2p_connect,mine_consensus} ...]]
                         Scenarios to test (default: all)
+```
+
+### Cleanup
+```
+testing cleanup
 ```
 
 See related [wiki article](https://github.com/ethereum/system-testing/wiki/How-to-run-a-test)

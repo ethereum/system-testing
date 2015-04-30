@@ -5,6 +5,7 @@ import time
 import json
 import logging
 import boto.ec2
+import nodeid_tool
 from contextlib import contextmanager
 from fabric.api import settings, lcd, task, local, abort, shell_env
 import futures
@@ -57,7 +58,7 @@ def machine_list():
     return machine("ls", capture=True)
 
 @task
-def create(vpc, region, zone, nodename, ami=None, securitygroup="system-testing"):
+def create(vpc, region, zone, nodename, ami=None, securitygroup="docker-machine"):
     """
     Launch an AWS instance
     """
@@ -263,10 +264,16 @@ def setup_es(vpc, region, zone, user, passwd):
     with settings(warn_only=False):
         with rollback([nodename]):
             # Launch ES node
-            create(vpc, region, zone, nodename, securitygroup="elarch")
+            create(vpc, region, zone, nodename, securitygroup="elasticsearch")
 
             # Get elk-compose
             local("git clone --depth=1 https://github.com/caktux/elk-compose.git")
+
+            # Expose 9200 in our case
+            with lcd('elk-compose'):
+                local('sed -i "s/build\: elasticsearch/&\\n'
+                      '  ports\:\\n'
+                      '    - \"9200\:9200\"/" docker-compose.yml')
 
             # Generate certificate and key for logstash-forwarder
             local("openssl req -x509 -batch -nodes -newkey rsa:2048 "
@@ -306,9 +313,9 @@ def setup_es(vpc, region, zone, user, passwd):
     return es['ip']
 
 @task
-def bootstrap(vpc, region, zone, ami_ids, nodes):
+def launch_nodes(vpc, region, zone, ami_ids, nodes):
     """
-    Launch bootnodes and client nodes using create()
+    Launch bootnodes and testnodes using create()
     """
     max_workers = len(nodes['cpp'] + nodes['go'] + nodes['python'])
 
@@ -316,13 +323,10 @@ def bootstrap(vpc, region, zone, ami_ids, nodes):
     with futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
         future_node = dict((executor.submit(create, vpc, region, zone, nodename, ami=ami_ids['cpp']), nodename)
                            for nodename in nodes['cpp'])
-        logger.info(future_node)
         future_node.update(dict((executor.submit(create, vpc, region, zone, nodename, ami=ami_ids['go']), nodename)
                            for nodename in nodes['go']))
-        logger.info(future_node)
         future_node.update(dict((executor.submit(create, vpc, region, zone, nodename, ami=ami_ids['python']), nodename)
                            for nodename in nodes['python']))
-        logger.info(future_node)
 
     for future in futures.as_completed(future_node, 300):
         nodename = future_node[future]
@@ -331,7 +335,7 @@ def bootstrap(vpc, region, zone, ami_ids, nodes):
         # else:  # No return value as we're not capturing create()'s output
         #     logger.info('%r returned: %s' % (nodename, future.result()))
 
-    logger.info("Bootstrap duration: %ss" % (time.time() - start))
+    logger.info("Launch duration: %ss" % (time.time() - start))
 
 @task
 def run_containers(nodes, images, options, commands):
@@ -344,24 +348,24 @@ def run_containers(nodes, images, options, commands):
             images[client] = "ethereum/client-%s" % client
 
     start = time.time()
-    with futures.ThreadPoolExecutor(max_workers=5) as executor:
+    with futures.ThreadPoolExecutor(max_workers=10) as executor:
         future_node = dict((executor.submit(run_on,
                                             nodename,
                                             images['cpp'],
-                                            options['cpp'],
-                                            commands['cpp']), nodename)
+                                            options[nodename],
+                                            commands[nodename]), nodename)
                            for nodename in nodes['cpp'])
         future_node.update(dict((executor.submit(run_on,
                                                  nodename,
                                                  images['go'],
-                                                 options['go'],
-                                                 commands['go']), nodename)
+                                                 options[nodename],
+                                                 commands[nodename]), nodename)
                            for nodename in nodes['go']))
         future_node.update(dict((executor.submit(run_on,
                                                  nodename,
                                                  images['python'],
-                                                 options['python'],
-                                                 commands['python']), nodename))
+                                                 options[nodename],
+                                                 commands[nodename]), nodename))
                            for nodename in nodes['python'])
 
     for future in futures.as_completed(future_node, 30):
@@ -369,7 +373,7 @@ def run_containers(nodes, images, options, commands):
         if future.exception() is not None:
             logger.info('%r generated an exception: %s' % (nodename, future.exception()))
 
-    logger.info("Bootstrap duration: %ss" % (time.time() - start))
+    logger.info("Run duration: %ss" % (time.time() - start))
 
 @task
 def stop_containers(nodenames):
@@ -377,7 +381,7 @@ def stop_containers(nodenames):
     Stop client nodes on machines using stop_on()
     """
     start = time.time()
-    with futures.ThreadPoolExecutor(max_workers=5) as executor:
+    with futures.ThreadPoolExecutor(max_workers=10) as executor:
         future_node = dict((executor.submit(stop_on,
                                             nodename), nodename)
                            for nodename in nodenames)
@@ -395,30 +399,38 @@ def teardown(nodenames):
     for nodename in nodenames:
         machine("rm %s" % nodename)
 
-# TODO
 @task
-def bootnode_run_on(nodename, image, options):
-    env = machine_env(nodename)
-    ip = env['host'][6:-5]
-    run_on(
-        nodename,
-        image,
-        options,
-        "--verbosity 9 --client-name %s --mining off --mode full --upnp off --public-ip %s" % (
-            nodename,
-            ip))
+def run_bootnodes(nodes, images):
+    options = dict()
+    commands = dict()
+    for impl in nodes:
+        for nodename in nodes[impl]:
+            env = machine_env(nodename)
+            ip = env['host'][6:-5]
 
-# TODO
-@task
-def client_run_on(nodename, image, options, command):
-    env = machine_env(nodename)
-    ip = env['host'][6:-5]
+            # Set options (name, daemonize, ports and entrypoint)
+            if impl == 'cpp':
+                options[nodename] = ('--name %s -d '
+                                     '-p 30303:30303 -p 30303:30303/udp '
+                                     '--entrypoint eth' % nodename)
+                commands[nodename] = ('--verbosity 9 --client-name %s '
+                                      '--mining off --mode full --upnp off '
+                                      '--public-ip %s"' % (nodename, ip))
+            elif impl == 'go':
+                options[nodename] = ('--name %s -d '
+                                     '-p 30303:30303 -p 30303:30303/udp '
+                                     '--entrypoint geth' % nodename)
+                commands[nodename] = ("--nodekeyhex=%s --port=30303 --bootnodes ''" % nodeid_tool.topriv(nodename))
+            elif impl == 'python':
+                options[nodename] = ('--name %s -d '
+                                     '-p 30303:30303 -p 30303:30303/udp '
+                                     '--entrypoint pyethapp' % nodename)
+                commands[nodename] = ''
+            else:
+                raise ValueError("No implementation: %s" % impl)
 
-    run_on(
-        nodename,
-        image,
-        options,
-        command.format(ip=ip))
+    run_containers(nodes, images, options, commands)
+
 
 # TODO per-user nodenames / tags
 @task

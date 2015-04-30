@@ -18,22 +18,17 @@ RUN apt-get install -q -y graphviz-dev libfreetype6-dev pkg-config python python
 RUN wget https://bootstrap.pypa.io/get-pip.py
 RUN python get-pip.py
 
-# Install docker-machine and docker client
+# Install docker-machine, docker-compose and docker client
 RUN wget -O /usr/bin/docker-machine https://github.com/docker/machine/releases/download/v0.2.0/docker-machine_linux-amd64
 RUN chmod +x /usr/bin/docker-machine
+RUN wget -O /usr/bin/docker-compose https://github.com/docker/compose/releases/download/1.2.0/docker-compose-`uname -s`-`uname -m`
+RUN chmod +x /usr/bin/docker-compose
 RUN wget -O /usr/bin/docker https://get.docker.com/builds/Linux/x86_64/docker-latest
 RUN chmod +x /usr/bin/docker
 
 # We add requirements.txt first to prevent unnecessary local rebuilds
 ADD requirements.txt requirements.txt
 RUN pip install -r requirements.txt
-
-# Install ipython
-RUN apt-get install -q -y ipython
-
-# Install docker-compose
-RUN wget -O /usr/bin/docker-compose https://github.com/docker/compose/releases/download/1.2.0/docker-compose-`uname -s`-`uname -m`
-RUN chmod +x /usr/bin/docker-compose
 
 # Install system-testing
 ADD . system-testing

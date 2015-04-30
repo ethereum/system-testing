@@ -2,10 +2,10 @@
 """
 Ethereum system-testing
 
-    Bootstraps x number nodes cpp, go and python nodes
-    TODO Ask to setup ES node
+    TODO Launch bootnodes
+    Launches x number nodes cpp, go and python nodes
     TODO Ask to terminate nodes after each test run or after failures
-    TODO Ask to clean up AMIs (previous ones just gets cleaned up on new runs)
+    TODO Ask to clean up AMIs (previous ones just get cleaned up on fresh runs [without amis.json])
 
     TODO Make a futures wrapper for better pattern reuse (in tasks.py)
 """
@@ -16,7 +16,7 @@ from glob import glob
 from getpass import getpass
 from fabric.api import settings, abort  # task, env, run, prompt, cd, get, put, runs_once, sudo
 from fabric.contrib.console import confirm  # from fabric.utils import error, puts, fastprint
-from tasks import machine_list, setup_es, bootstrap, launch_prepare_nodes, prepare_nodes, run_scenarios, rollback, teardown
+from tasks import machine, machine_list, setup_es, launch_nodes, launch_prepare_nodes, prepare_nodes, run_bootnodes, run_scenarios, rollback, teardown
 from argparse import ArgumentParser
 from . import __version__
 
@@ -98,7 +98,7 @@ def parse_arguments(parser):
         help="Scenarios to test (default: %(default)s)")
     parser.add_argument(
         "command",
-        choices=["ls", "rm"],
+        choices=["ls", "cleanup"],
         nargs='?',
         help="Optional commands for maintenance")
     parser.add_argument(
@@ -116,7 +116,7 @@ class Inventory(object):
         self.instances = machines['instances']
         self.bootnodes = machines['bootnodes']
         self.clients = machines['clients']
-        # self.roles = machines.roles
+
         if not machines['es']:
             try:
                 with open('es.json', 'r') as f:
@@ -129,19 +129,19 @@ class Inventory(object):
     def parse_machines(self):
         machines = machine_list().splitlines()[1:]
         parsed = {}
-        instances = []
-        bootnodes = []
-        clients = []
+        instances = {}
+        bootnodes = {}
+        clients = {}
         es = None
 
         for mach in machines:
             fields = mach.split()
             ip = fields[-1][6:-5]
-            instances.append({fields[0]: ip})
+            instances.update({fields[0]: ip})
             if mach.startswith('bootnode'):
-                bootnodes.append(ip)
+                bootnodes.update({fields[0]: ip})
             elif mach.startswith('testnode'):
-                clients.append(ip)
+                clients.update({fields[0]: ip})
             elif mach.startswith('elasticsearch'):
                 es = ip
 
@@ -171,6 +171,20 @@ def main():
     logger.info("=====")
     logger.info("Ethereum system-testing %s", __version__)
     logger.info("=====\n")
+
+    if args.command == "ls":
+        # List machines
+        machines = machine_list()
+        logger.info("Machines:")
+        logger.info(machines)
+        logger.info("===")
+        raise SystemExit
+    elif args.command == "cleanup":
+        # Cleanup - TODO per implementation, filters and use futures
+        inventory = Inventory()
+        for nodename, ip in inventory.instances.items():
+            machine("rm %s" % nodename)
+        raise SystemExit
 
     # Ask to setup ES node
     es = None
@@ -217,6 +231,12 @@ def main():
         logger.warn("Aborting...")
         raise SystemExit
 
+    images = {
+        'cpp': args.cpp_image,
+        'go': args.go_image,
+        'python': args.python_image
+    }
+
     # TODO per-user nodenames / tags
     clients = []
     nodenames = []
@@ -231,12 +251,6 @@ def main():
         nodenames.append("prepare-python")
 
     # Prepare nodes, creates new AMIs / stores IDs to file for reuse
-    images = {
-        'cpp': args.cpp_image,
-        'go': args.go_image,
-        'python': args.python_image
-    }
-
     try:
         with open('amis.json', 'r') as f:
             ami_ids = json.load(f)
@@ -251,7 +265,18 @@ def main():
         # Teardown prepare nodes
         teardown(nodenames)
 
-    # Set nodes object
+    # Launch bootnodes
+    # TODO add options for that
+    nodes = {'cpp': [], 'go': ["bootnode-go-0"], 'python': []}
+    launch_nodes(
+        args.vpc,
+        args.region,
+        args.zone,
+        ami_ids,
+        nodes)
+    run_bootnodes(nodes, images)
+
+    # Set testnodes object
     nodes = {'cpp': [], 'go': [], 'python': []}
     nodenames = []
     for x in xrange(0, args.cpp_nodes):
@@ -264,8 +289,8 @@ def main():
     logger.info("Nodes: %s" % nodes)
     logger.info("Nodenames: %s" % nodenames)
 
-    # Bootstrap nodes using prepared AMIs from amis.json if it exists
-    bootstrap(
+    # Launch test nodes using prepared AMIs from amis.json if it exists
+    launch_nodes(
         args.vpc,
         args.region,
         args.zone,
@@ -285,24 +310,6 @@ def main():
     logger.info('clients: %s' % inventory.clients)
     logger.info('instances: %s' % inventory.instances)
     # logger.info('roles: %s' % inventory.roles)
-
-    # Set options (daemonize and entrypoint), see clients.py
-    # options = {
-    #     'cpp': '-d --entrypoint eth',
-    #     'go': '-d --entrypoint geth',
-    #     'python': '-d --entrypoint pyethapp',
-    # }
-
-    # TODO Launch bootnodes
-    # ... set commands
-
-    # # test run
-    # commands = {
-    #     'cpp': '',
-    #     'go': '',
-    #     'python': ''
-    # }
-    # run_containers(nodes, images, options, commands)
 
     # Load scenarios
     if args.scenarios == 'all':
