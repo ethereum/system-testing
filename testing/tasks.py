@@ -69,6 +69,7 @@ def create(vpc, region, zone, nodename, ami=None, securitygroup="docker-machine"
              "--amazonec2-vpc-id %s "
              "--amazonec2-region %s "
              "--amazonec2-zone %s "
+             "--amazonec2-instance-type %s "
              "--amazonec2-root-size 8 "
              "--amazonec2-security-group %s "
              "%s"
@@ -78,6 +79,7 @@ def create(vpc, region, zone, nodename, ami=None, securitygroup="docker-machine"
                  vpc,
                  region,
                  zone,
+                 "t2.medium",  # TODO evaluate final instance types / permanent ElasticSearch
                  securitygroup,
                  ("--amazonec2-ami %s " % ami) if ami else "",
                  nodename)))
@@ -155,6 +157,7 @@ def stop_on(nodename, capture=False):
         abort("Error getting machine environment")
     with shell_env(DOCKER_TLS_VERIFY=env['tls'], DOCKER_CERT_PATH=env['cert_path'], DOCKER_HOST=env['host']):
         stop(nodename)
+        docker(nodename, "rm %s" % nodename)
 
 @task
 def docker_on(nodename, command):
@@ -419,8 +422,12 @@ def run_bootnodes(nodes, images):
             elif impl == 'go':
                 options[nodename] = ('--name %s -d '
                                      '-p 30303:30303 -p 30303:30303/udp '
+                                     '-v /opt/account:/opt/account '
                                      '--entrypoint geth' % nodename)
-                commands[nodename] = ("--nodekeyhex=%s --port=30303 --bootnodes ''" % nodeid_tool.topriv(nodename))
+                commands[nodename] = ("--nodekeyhex=%s "
+                                      "--port=30303 "
+                                      "--bootnodes 'enode://%s@10.0.0.0:10000'" % (nodeid_tool.topriv(nodename),
+                                                                                   nodeid_tool.topub(nodename)))
             elif impl == 'python':
                 options[nodename] = ('--name %s -d '
                                      '-p 30303:30303 -p 30303:30303/udp '
@@ -481,6 +488,45 @@ def prepare_ami(region, zone, nodename, client, image=None):
         return ami_id
     else:
         raise ValueError("Created AMI returned non-available state", image.state)
+
+@task
+def account_on(nodename, image):
+    """
+    Run geth with 'account new' on a node
+    """
+    # Create password file
+    ssh_on(nodename, "sudo mkdir /opt/data")
+    ssh_on(nodename, "sudo touch /opt/data/password")
+
+    # Create account
+    options = ("--volume /opt/data:/opt/data "
+               "--entrypoint geth")
+    command = ("--datadir /opt/data "
+               "--password /opt/data/password "
+               "account new")
+    run_on(nodename, image, options, command)
+
+    # Cleanup container
+    docker_on(nodename, "rm %s" % nodename)
+
+@task
+def create_accounts(nodenames, image):
+    """
+    Create geth accounts
+    """
+    start = time.time()
+    with futures.ThreadPoolExecutor(max_workers=10) as executor:
+        future_node = dict((executor.submit(account_on,
+                                            nodename,
+                                            image), nodename)
+                           for nodename in nodenames)
+
+    for future in futures.as_completed(future_node, 30):
+        nodename = future_node[future]
+        if future.exception() is not None:
+            logger.info('%r generated an exception: %s' % (nodename, future.exception()))
+
+    logger.info("New account duration: %ss" % (time.time() - start))
 
 @task
 def run_scenarios(scenarios):

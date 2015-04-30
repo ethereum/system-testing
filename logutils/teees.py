@@ -73,13 +73,13 @@ while True:
             l = sys.stdin.readline()
 
             # workaround for wrong time format in cpp, add subseconds and Z
-            if '\"ts\"' in l and not 'Z\"' in l:
+            if '\"ts\"' in l and 'Z\"' not in l:
                 l = l[:-2] + '.000000Z\"'
             ml = ml + l.strip()
             if l == '}\n':
                 break
         l = ml
-            
+
     try:
         d = json.loads(l)
     except ValueError:
@@ -96,7 +96,6 @@ while True:
 
     # substitute event name
     d['event'] = substitutions.get(d['event'], d['event'])
-
 
     # format for kibana
     kd = lsformatter.format(d)

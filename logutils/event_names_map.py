@@ -1,4 +1,4 @@
-import events
+# import events
 
 # 'other.name' => 'expected_name'
 substitutions = dict()
@@ -9,8 +9,7 @@ def add_substitutions(substs):
         assert slang and isinstance(slang, str)
         substitutions[slang] = template
 
-template = \
-{
+template = {
     "notjson": "",
     "starting": "",
     "p2p.connecting": "",
@@ -44,10 +43,8 @@ template = \
 # currently fails. Haven't checked why
 # assert template == events.event_name_map()
 
-### pyeth (example)
-
-pyeth = \
-{
+# pyeth (example)
+pyeth = {
     "starting": "start",
     "p2p.connecting": "connecting",
     "p2p.connected": "connected",
@@ -56,13 +53,10 @@ pyeth = \
 
 add_substitutions(pyeth)
 
-### cpp
+# cpp
 
+# go
 
-### go
+# J
 
-
-### J
-
-
-### JS
+# JS

@@ -2,8 +2,11 @@
 """
 Ethereum system-testing
 
-    TODO Launch bootnodes
     Launches x number nodes cpp, go and python nodes
+
+    TODO Re-implement logging using teees or logstash-forwarder
+    TODO D'you like DAGs? What? DAGs! Oh you mean dogs! Yeah, DAGs!
+    TODO Options for how many / types of bootnodes to launch
     TODO Ask to terminate nodes after each test run or after failures
     TODO Ask to clean up AMIs (previous ones just get cleaned up on fresh runs [without amis.json])
 
@@ -16,7 +19,8 @@ from glob import glob
 from getpass import getpass
 from fabric.api import settings, abort  # task, env, run, prompt, cd, get, put, runs_once, sudo
 from fabric.contrib.console import confirm  # from fabric.utils import error, puts, fastprint
-from tasks import machine, machine_list, setup_es, launch_nodes, launch_prepare_nodes, prepare_nodes, run_bootnodes, run_scenarios, rollback, teardown
+from tasks import machine, machine_list, setup_es, launch_nodes, launch_prepare_nodes
+from tasks import prepare_nodes, run_bootnodes, create_accounts, run_scenarios, rollback, teardown
 from argparse import ArgumentParser
 from . import __version__
 
@@ -296,6 +300,9 @@ def main():
         args.zone,
         ami_ids,
         nodes)
+
+    # Create geth accounts for Go nodes
+    create_accounts(nodes['go'], args.go_image)
 
     # List machines
     machines = machine_list()

@@ -40,8 +40,9 @@ def search(es, index_name):
 
 def main(config):
     es = elasticsearch.Elasticsearch(host=config['es_host'], port=config['es_port'])
-    indices = [i for i in es.indices.status()['indices'].keys()
-                    if i.startswith(config['index_prefix'])]
+    indices = [i for i in es.indices.status()['indices'].keys() if i.startswith(config['index_prefix'])]
+    print es
+    print indices
 
 if __name__ == '__main__':
     import sys

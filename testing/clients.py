@@ -6,46 +6,53 @@ from testing import Inventory
 from tasks import run_containers, stop_containers
 from fabric.api import task
 import nodeid_tool
-# from logutils.eshelper import log_scenario  # dumbass circular import...
 
 # Docker run options (name, daemonize, ports, entrypoint)
 opts = {}
 opts['cpp'] = ('--name {nodename} -d '
-               '-p 30303:30303 -p 30303:30303/udp '
+               '-p 30303:30303 '
+               '-p 30303:30303/udp '
+               '-v /opt/data:/opt/data '
                '--entrypoint eth')
 
 opts['go'] = ('--name {nodename} -d '
-              '-p 30303:30303 -p 30303:30303/udp '
+              '-p 30303:30303 '
+              '-p 30303:30303/udp '
+              '-v /opt/data:/opt/data '
               '--entrypoint geth')
 
 opts['python'] = ('--name {nodename} -d '
-                  '-p 30303:30303 -p 30303:30303/udp '
+                  '-p 30303:30303 '
+                  '-p 30303:30303/udp '
+                  '-v /opt/data:/opt/data '
                   '--entrypoint pyethapp')
 
 # Clients command line parameters
 cmds = {}
 cmds['go'] = (
-    '--port=30000 '
+    '--datadir /opt/data '
+    '--rpc '
     '--rpcaddr=0.0.0.0 '
-    '--rpcport=20000 '
-    '--logjson "-" --loglevel "5" '
+    '--logjson "-" '
+    '--loglevel "5" '
     '--bootnodes=enode://{bootstrap_public_key}@{bootstrap_ip}:30303 '
     '--maxpeers={req_num_peers} '
     '--nodekeyhex={privkey} '
     '--mine={mining_state} '
     '--etherbase primary '
     '--unlock primary '
-    '--password /tmp/geth-password '
+    '--password /opt/data/password'
 )
 cmds['cpp'] = (
+    '--db-path /opt/data '
     '--verbosity 9 '
     '--structured-logging '
-    '--json-rpc-port 21000 '
-    '--listen 31000 '
+    '--json-rpc '
     '--upnp off '
     '--public-ip {client_ip} '
     '--remote {bootstrap_ip} '
     '--peers {req_num_peers} {mining_state} '
+    '--session-secret {privkey}'
 )
 cmds['python'] = (
     '--logging :DEBUG '
@@ -54,9 +61,8 @@ cmds['python'] = (
     '--port 30303 '
     '--mining {mining_state} '
     '--peers {req_num_peers} '
-    '--address {coinbase} '
+    '--address {coinbase}'
 )
-
 
 # teees arguments
 teees_args = '{elasticsearch_ip} guid,{pubkey_hex}'
@@ -133,8 +139,9 @@ def start_clients(clients=[], impls=[], images=None, req_num_peers=7, boot='boot
             options[nodename] = opts['go'].format(nodename=nodename)
         elif impl == 'cpp':
             commands[nodename] = cmds['cpp'].format(bootstrap_ip=bootnode['ip'],
-                                                    client_ip=client,
+                                                    client_ip=clients_config[client]['ip'],
                                                     req_num_peers=req_num_peers,
+                                                    privkey=clients_config[client]['privkey'],
                                                     mining_state='--force-mining '
                                                                  '--mining on' if enable_mining else '')
             options[nodename] = opts['cpp'].format(nodename=nodename)
@@ -149,10 +156,9 @@ def start_clients(clients=[], impls=[], images=None, req_num_peers=7, boot='boot
 
         # TODO teees or logstash-forwarder
         # for impl in ['go', 'cpp', 'python']:
-        #     d['vars']['docker_run_args'][impl] = cmds[impl]
         #     d['vars']['docker_tee_args'][impl] = teees_args.format(
         #         elasticsearch_ip=inventory.es,
-        #         pubkey_hex=clients_config[client][impl]['pubkey'])
+        #         pubkey_hex=clients_config[client]['pubkey'])
 
         # Add nodename per implementation
         nodes[impl].append(nodename)

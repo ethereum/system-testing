@@ -88,8 +88,7 @@ def assert_started(minstarted):
 
     num_started = len(response.aggregations.by_guid.buckets)
 
-    assert num_started >= minstarted, 'only %d (of %d) clients '  \
-            'started' % (num_started, minstarted)
+    assert num_started >= minstarted, 'only %d (of %d) clients started' % (num_started, minstarted)
     for tag in response.aggregations.by_guid.buckets:
         assert tag.doc_count == 1, 'client %s started more than once' % ip_from_guid(tag.key)
 
@@ -103,19 +102,19 @@ def assert_connected(minconnected=2, minpeers=2):
     s.aggs.bucket('by_guid', 'terms', field='guid', size=0)
     response = s.execute()
     # pprint(response)
-    
+
     print "passed for: "
     for tag in response.aggregations.by_guid.buckets:
         print '  ' + ip_from_guid(tag.key) + ',\t#connections: %d' % tag.doc_count
 
     num_connected = len(response.aggregations.by_guid.buckets)
-    
+
     assert num_connected >= minconnected, 'only %d (of %d) clients connected to other nodes' % (num_connected, minconnected)
 
     for tag in response.aggregations.by_guid.buckets:
         num_connected = tag.doc_count
-        assert num_connected >= minpeers, 'at least one client only connected to %d (of %d expected) other nodes"' % \
-                (num_connected, minpeers)
+        assert num_connected >= minpeers, ('at least one client only connected to %d '
+                                           '(of %d expected) other nodes"' % (num_connected, minpeers))
 
 def assert_mining(minmining):
     """
@@ -130,7 +129,7 @@ def assert_mining(minmining):
     print "passed for: "
     for tag in response.aggregations.by_guid.buckets:
         print '  ' + ip_from_guid(tag.key) + ',\t#blocks mined: %d' % tag.doc_count
-    
+
     num_mining = len(response.aggregations.by_guid.buckets)
     assert num_mining >= minmining, 'only %d clients mining, expexted at least %d' % (num_mining, minmining)
 
@@ -149,7 +148,7 @@ def assert_consensus(offset=10):
     s.aggs.bucket('by_block_hash', 'terms', field='@fields.block_hash', size=0)
     # s = s[10:10]
     response = s.execute()
-    pprint (response)
+    pprint(response)
     if response:
         return max(tag.doc_count for tag in response.aggregations.by_block_hash.buckets)
     else:

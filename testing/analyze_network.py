@@ -3,7 +3,7 @@ from elasticsearch_dsl import Search
 from elasticsearch_dsl import F as _F
 from elasticsearch import Elasticsearch
 from collections import OrderedDict
-from pyethereum.utils import sha3, big_endian_to_int
+from pyethereum.utils import big_endian_to_int
 
 
 def at_kargs(kargs):
@@ -55,7 +55,7 @@ def fetch(session):
     s = s.filter('range', **{'@timestamp': dict(gte=session['start'], lte=session['stop'])})
     s = s.fields(['@fields.remote_id', 'guid', '@message', '@timestamp'])
     s = s[0:100000]
-    #s = s[0:10]
+    # s = s[0:10]
     s = s.sort('@timestamp')
     response = s.execute()
     return response
@@ -92,7 +92,7 @@ def analyze(r):
 def weight(a, b):
     # calc distance
     max_distance = 2 ** 32
-    #distance = big_endian_to_int(sha3(a.decode('hex'))) ^ big_endian_to_int(sha3(b.decode('hex')))
+    # distance = big_endian_to_int(sha3(a.decode('hex'))) ^ big_endian_to_int(sha3(b.decode('hex')))
     distance = big_endian_to_int(a.decode('hex')) ^ big_endian_to_int(b.decode('hex'))
     # same node is weight == 1
     return 1 - distance / max_distance
@@ -101,7 +101,7 @@ def weight(a, b):
 def visualize(graph):
     import networkx as nx
     import matplotlib.pyplot as plt
-    from networkx import graphviz_layout
+    # from networkx import graphviz_layout
 
     G = nx.Graph()
     for node, remotes in graph.items():
