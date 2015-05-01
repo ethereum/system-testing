@@ -151,13 +151,14 @@ def run_on(nodename, image, options="", command="", capture=False):
         run(nodename, image, options, command)
 
 @task
-def stop_on(nodename, capture=False):
+def stop_on(nodename, capture=False, rm=True):
     env = machine_env(nodename)
     if not env:
         abort("Error getting machine environment")
     with shell_env(DOCKER_TLS_VERIFY=env['tls'], DOCKER_CERT_PATH=env['cert_path'], DOCKER_HOST=env['host']):
         stop(nodename)
-        docker(nodename, "rm %s" % nodename)
+        if rm:
+            docker("rm %s" % nodename)
 
 @task
 def docker_on(nodename, command):
@@ -368,8 +369,8 @@ def run_containers(nodes, images, options, commands):
                                                  nodename,
                                                  images['python'],
                                                  options[nodename],
-                                                 commands[nodename]), nodename))
-                           for nodename in nodes['python'])
+                                                 commands[nodename]), nodename)
+                           for nodename in nodes['python']))
 
     for future in futures.as_completed(future_node, 30):
         nodename = future_node[future]
@@ -456,7 +457,11 @@ def prepare_ami(region, zone, nodename, client, image=None):
     # Pull base image
     pull_on(nodename, image)
 
-    # TODO create new docker image w/ logstash-forwarder
+    # TODO Create new docker image w/ logstash-forwarder
+    # Clone the repo to get logutils/teees.py for now
+    ssh_on(nodename, "sudo apt-get install -q -y python-pip")
+    ssh_on(nodename, "sudo pip install elasticsearch")
+    ssh_on(nodename, "git clone --depth=1 --branch docker-machine https://github.com/ethereum/system-testing")
 
     # Stop the instance
     machine("stop %s" % nodename)
@@ -527,6 +532,63 @@ def create_accounts(nodenames, image):
             logger.info('%r generated an exception: %s' % (nodename, future.exception()))
 
     logger.info("New account duration: %ss" % (time.time() - start))
+
+@task
+def generate_dags(nodes, images):
+    """
+    Generate DAGs on nodes
+    """
+    options = dict()
+    commands = dict()
+    for impl in nodes:
+        for nodename in nodes[impl]:
+            # Set options (name, daemonize, ports and entrypoint)
+            if impl == 'cpp':
+                options[nodename] = ('--name %s -d '
+                                     '--volume /opt/data:/opt/data '
+                                     '--entrypoint eth' % nodename)
+                commands[nodename] = "--create-dag"
+            elif impl == 'go':
+                options[nodename] = ('--name %s -d '
+                                     '--volume /opt/data:/opt/data '
+                                     '--entrypoint geth' % nodename)
+                commands[nodename] = "makedag"
+            elif impl == 'python':
+                options[nodename] = ('--name %s -d '
+                                     '--volume /opt/data:/opt/data '
+                                     '-p 30303:30303 -p 30303:30303/udp '
+                                     '--entrypoint pyethapp' % nodename)
+                commands[nodename] = 'makedag'  # TODO
+            else:
+                raise ValueError("No implementation: %s" % impl)
+
+    run_containers(nodes, images, options, commands)
+
+@task
+def start_logging(nodenames, elasticsearch_ip):
+    """
+    Start logging on nodes, we need to use ssh_on() so the `docker logs` process
+    can run on the remote host itself instead of locally, which would create quite
+    a bottleneck.
+    """
+    command = ("'nohup "
+               "sudo docker logs --follow=true {nodename} 2>&1 | "
+               "./system-testing/logutils/teees.py %s guid,{pubkey} >& /dev/null < /dev/null &'" % elasticsearch_ip)
+
+    start = time.time()
+    with futures.ThreadPoolExecutor(max_workers=10) as executor:
+        future_node = dict((executor.submit(ssh_on,
+                                            nodename,
+                                            command.format(nodename=nodename,
+                                                           pubkey=nodeid_tool.topub(nodename))), nodename)
+                           for nodename in nodenames)
+
+    for future in futures.as_completed(future_node, 30):
+        nodename = future_node[future]
+        if future.exception() is not None:
+            logger.info('%r generated an exception: %s' % (nodename, future.exception()))
+
+    logger.info("Start logging duration: %ss" % (time.time() - start))
 
 @task
 def run_scenarios(scenarios):

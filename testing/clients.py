@@ -3,7 +3,7 @@ Ethereum clients support
 """
 
 from testing import Inventory
-from tasks import run_containers, stop_containers
+from tasks import run_containers, stop_containers, start_logging
 from fabric.api import task
 import nodeid_tool
 
@@ -12,18 +12,21 @@ opts = {}
 opts['cpp'] = ('--name {nodename} -d '
                '-p 30303:30303 '
                '-p 30303:30303/udp '
+               '-p 8080:8080 '
                '-v /opt/data:/opt/data '
                '--entrypoint eth')
 
 opts['go'] = ('--name {nodename} -d '
               '-p 30303:30303 '
               '-p 30303:30303/udp '
+              '-p 8545:8545 '
               '-v /opt/data:/opt/data '
               '--entrypoint geth')
 
 opts['python'] = ('--name {nodename} -d '
                   '-p 30303:30303 '
                   '-p 30303:30303/udp '
+                  '-p 4000:4000 '
                   '-v /opt/data:/opt/data '
                   '--entrypoint pyethapp')
 
@@ -55,17 +58,12 @@ cmds['cpp'] = (
     '--session-secret {privkey}'
 )
 cmds['python'] = (
-    '--logging :DEBUG '
-    '--log_json 1 '
-    '--remote {bootstrap_ip} '
-    '--port 30303 '
-    '--mining {mining_state} '
-    '--peers {req_num_peers} '
-    '--address {coinbase}'
+    '--bootstrap_node=enode://{bootstrap_public_key}@{bootstrap_ip}:30303 '
+    '-c data_dir=/opt/data '
+    '-c accounts.privkeys_hex=[{privkey}] '
+    '-c p2p.min_peers={req_num_peers} '
+    'run'
 )
-
-# teees arguments
-teees_args = '{elasticsearch_ip} guid,{pubkey_hex}'
 
 mining_percentage = 50
 
@@ -124,41 +122,36 @@ def start_clients(clients=[], impls=[], images=None, req_num_peers=7, boot='boot
     nodes = {'cpp': [], 'go': [], 'python': []}
 
     # Generate per nodename options and commands
-    for client in clients:
-        assert client
+    for nodename in clients:
+        assert nodename
 
-        nodename = clients_config[client]['nodename']
-        impl = clients_config[client]['impl']
+        impl = clients_config[nodename]['impl']
 
         if impl == 'go':
             commands[nodename] = cmds['go'].format(bootstrap_public_key=bootnode['pk'],
                                                    bootstrap_ip=bootnode['ip'],
                                                    req_num_peers=req_num_peers,
-                                                   privkey=clients_config[client]['privkey'],
+                                                   privkey=clients_config[nodename]['privkey'],
                                                    mining_state=enable_mining)
             options[nodename] = opts['go'].format(nodename=nodename)
         elif impl == 'cpp':
             commands[nodename] = cmds['cpp'].format(bootstrap_ip=bootnode['ip'],
-                                                    client_ip=clients_config[client]['ip'],
+                                                    client_ip=clients_config[nodename]['ip'],
                                                     req_num_peers=req_num_peers,
-                                                    privkey=clients_config[client]['privkey'],
+                                                    privkey=clients_config[nodename]['privkey'],
                                                     mining_state='--force-mining '
                                                                  '--mining on' if enable_mining else '')
             options[nodename] = opts['cpp'].format(nodename=nodename)
         elif impl == 'python':
-            commands[nodename] = cmds['python'].format(bootstrap_ip=bootnode['ip'],
+            commands[nodename] = cmds['python'].format(bootstrap_public_key=bootnode['pk'],
+                                                       bootstrap_ip=bootnode['ip'],
                                                        req_num_peers=req_num_peers,
-                                                       coinbase=clients_config[client]['coinbase'],
-                                                       mining_state=mining_percentage if enable_mining else '0')
+                                                       privkey=clients_config[nodename]['privkey'],
+                                                       # mining_state=mining_percentage if enable_mining else '0'
+                                                       )
             options[nodename] = opts['python'].format(nodename=nodename)
         else:
             raise ValueError("No implementation: %s" % impl)
-
-        # TODO teees or logstash-forwarder
-        # for impl in ['go', 'cpp', 'python']:
-        #     d['vars']['docker_tee_args'][impl] = teees_args.format(
-        #         elasticsearch_ip=inventory.es,
-        #         pubkey_hex=clients_config[client]['pubkey'])
 
         # Add nodename per implementation
         nodes[impl].append(nodename)
@@ -166,6 +159,10 @@ def start_clients(clients=[], impls=[], images=None, req_num_peers=7, boot='boot
     # All nodes per implementation, with optional images, and all options and commands per nodename
     run_containers(nodes, images, options, commands)
 
+    # Start logging
+    start_logging(clients, inventory.es)
+
+@task
 def stop_clients(clients=[], impls=[]):
     inventory = Inventory()
     nodenames = []

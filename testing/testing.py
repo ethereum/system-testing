@@ -19,7 +19,7 @@ from glob import glob
 from getpass import getpass
 from fabric.api import settings, abort  # task, env, run, prompt, cd, get, put, runs_once, sudo
 from fabric.contrib.console import confirm  # from fabric.utils import error, puts, fastprint
-from tasks import machine, machine_list, setup_es, launch_nodes, launch_prepare_nodes
+from tasks import machine, machine_list, setup_es, launch_nodes, launch_prepare_nodes, stop_containers
 from tasks import prepare_nodes, run_bootnodes, create_accounts, run_scenarios, rollback, teardown
 from argparse import ArgumentParser
 from . import __version__
@@ -46,6 +46,11 @@ def parse_arguments(parser):
         default="ethereum/client-cpp",
         help="Base C++ image to use (default: %(default)s)")
     parser.add_argument(
+        "--cpp-boot",
+        dest="cpp_boot",
+        default=0,
+        help="Number of C++ bootnodes to launch (default: %(default)s)")
+    parser.add_argument(
         "-g", "--go",
         default=1,
         dest="go_nodes",
@@ -57,6 +62,11 @@ def parse_arguments(parser):
         default="ethereum/client-go",
         help="Base Go image to use (default: %(default)s)")
     parser.add_argument(
+        "--go-boot",
+        dest="go_boot",
+        default=1,
+        help="Number of Go bootnodes to launch (default: %(default)s)")
+    parser.add_argument(
         "-p", "--python",
         default=1,
         dest="python_nodes",
@@ -67,6 +77,11 @@ def parse_arguments(parser):
         dest="python_image",
         default="ethereum/client-python",
         help="Base PyEthApp image to use (default: %(default)s)")
+    parser.add_argument(
+        "--python-boot",
+        dest="python_boot",
+        default=0,
+        help="Number of Python bootnodes to launch (default: %(default)s)")
     parser.add_argument(
         "-e", "--es",
         default=None,
@@ -102,7 +117,7 @@ def parse_arguments(parser):
         help="Scenarios to test (default: %(default)s)")
     parser.add_argument(
         "command",
-        choices=["ls", "cleanup"],
+        choices=["ls", "stop", "cleanup"],
         nargs='?',
         help="Optional commands for maintenance")
     parser.add_argument(
@@ -183,6 +198,9 @@ def main():
         logger.info(machines)
         logger.info("===")
         raise SystemExit
+    elif args.command == "stop":
+        stop_containers(args.parameters)
+        raise SystemExit
     elif args.command == "cleanup":
         # Cleanup - TODO per implementation, filters and use futures
         inventory = Inventory()
@@ -241,24 +259,24 @@ def main():
         'python': args.python_image
     }
 
-    # TODO per-user nodenames / tags
-    clients = []
-    nodenames = []
-    if args.cpp_nodes:
-        clients.append("cpp")
-        nodenames.append("prepare-cpp")
-    if args.go_nodes:
-        clients.append("go")
-        nodenames.append("prepare-go")
-    if args.python_nodes:
-        clients.append("python")
-        nodenames.append("prepare-python")
-
     # Prepare nodes, creates new AMIs / stores IDs to file for reuse
     try:
         with open('amis.json', 'r') as f:
             ami_ids = json.load(f)
     except:
+        # TODO per-user nodenames / tags
+        clients = []
+        nodenames = []
+        if args.cpp_nodes:
+            clients.append("cpp")
+            nodenames.append("prepare-cpp")
+        if args.go_nodes:
+            clients.append("go")
+            nodenames.append("prepare-go")
+        if args.python_nodes:
+            clients.append("python")
+            nodenames.append("prepare-python")
+
         with settings(warn_only=False):
             with rollback(nodenames):
                 launch_prepare_nodes(args.vpc, args.region, args.zone, clients)
@@ -269,40 +287,51 @@ def main():
         # Teardown prepare nodes
         teardown(nodenames)
 
-    # Launch bootnodes
-    # TODO add options for that
-    nodes = {'cpp': [], 'go': ["bootnode-go-0"], 'python': []}
-    launch_nodes(
-        args.vpc,
-        args.region,
-        args.zone,
-        ami_ids,
-        nodes)
-    run_bootnodes(nodes, images)
+    # TODO Compary inventory to see how many nodes need to be launched
+    inventory = Inventory()
 
-    # Set testnodes object
-    nodes = {'cpp': [], 'go': [], 'python': []}
-    nodenames = []
-    for x in xrange(0, args.cpp_nodes):
-        nodes['cpp'].append("testnode-cpp-%s" % x)
-    for x in xrange(0, args.go_nodes):
-        nodes['go'].append("testnode-go-%s" % x)
-    for x in xrange(0, args.python_nodes):
-        nodes['python'].append("testnode-python-%s" % x)
-    nodenames = nodes['cpp'] + nodes['go'] + nodes['python']
-    logger.info("Nodes: %s" % nodes)
-    logger.info("Nodenames: %s" % nodenames)
+    if (args.cpp_boot or args.go_boot or args.python_boot) and not inventory.bootnodes:
+        # Launch bootnodes
+        nodes = {'cpp': [], 'go': [], 'python': []}
+        for x in xrange(0, args.cpp_boot):
+            nodes['cpp'].append("bootnode-cpp-%s" % x)
+        for x in xrange(0, args.go_boot):
+            nodes['go'].append("bootnode-go-%s" % x)
+        for x in xrange(0, args.python_boot):
+            nodes['python'].append("bootnode-python-%s" % x)
+        launch_nodes(
+            args.vpc,
+            args.region,
+            args.zone,
+            ami_ids,
+            nodes)
+        run_bootnodes(nodes, images)
 
-    # Launch test nodes using prepared AMIs from amis.json if it exists
-    launch_nodes(
-        args.vpc,
-        args.region,
-        args.zone,
-        ami_ids,
-        nodes)
+    if (args.cpp_nodes or args.go_nodes or args.python_nodes) and not inventory.clients:
+        # Set testnodes object
+        nodes = {'cpp': [], 'go': [], 'python': []}
+        nodenames = []
+        for x in xrange(0, args.cpp_nodes):
+            nodes['cpp'].append("testnode-cpp-%s" % x)
+        for x in xrange(0, args.go_nodes):
+            nodes['go'].append("testnode-go-%s" % x)
+        for x in xrange(0, args.python_nodes):
+            nodes['python'].append("testnode-python-%s" % x)
+        nodenames = nodes['cpp'] + nodes['go'] + nodes['python']
 
-    # Create geth accounts for Go nodes
-    create_accounts(nodes['go'], args.go_image)
+        logger.info("Nodes: %s" % nodes)
+        logger.info("Nodenames: %s" % nodenames)
+
+        # Launch test nodes using prepared AMIs from amis.json if it exists
+        launch_nodes(
+            args.vpc,
+            args.region,
+            args.zone,
+            ami_ids,
+            nodes)
+
+        # Create geth accounts for Go nodes
+        create_accounts(nodes['go'], args.go_image)
 
     # List machines
     machines = machine_list()
@@ -310,7 +339,7 @@ def main():
     logger.info(machines)
     logger.info("===")
 
-    # Check inventory
+    # List inventory
     inventory = Inventory()
     logger.info('bootnodes: %s' % inventory.bootnodes)
     logger.info('elasticsearch: %s' % inventory.es)
