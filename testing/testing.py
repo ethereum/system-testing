@@ -2,13 +2,8 @@
 """
 Ethereum system-testing
 
-    Launches x number nodes cpp, go and python nodes
-
-    TODO Re-implement logging using teees or logstash-forwarder
-    TODO D'you like DAGs? What? DAGs! Oh you mean dogs! Yeah, DAGs!
-    TODO Options for how many / types of bootnodes to launch
-    TODO Ask to terminate nodes after each test run or after failures
-    TODO Ask to clean up AMIs (previous ones just get cleaned up on fresh runs [without amis.json])
+    TODO Re-implement logging using logstash-forwarder
+    TODO Ask to clean up AMIs? (previous ones just get cleaned up on fresh runs [without amis.json])
 
     TODO Make a futures wrapper for better pattern reuse (in tasks.py)
 """
@@ -208,6 +203,14 @@ def main():
             machine("rm %s" % nodename)
         raise SystemExit
 
+    # Create certs if they don't exist, otherwise we can end up creating
+    # the same file in parallel in preparation steps
+    if not os.path.exists(os.path.join(os.path.expanduser("~"), ".docker", "machine", "certs")):
+        logging.info("No certificates found, creating them...")
+        machine("create --url tcp://127.0.0.1:2376 dummy")
+        machine("rm dummy")
+        logging.info("Certificates created.")
+
     # Ask to setup ES node
     es = None
     if not args.elasticsearch:
@@ -236,9 +239,11 @@ def main():
 
     # Total nodes
     total = args.cpp_nodes + args.go_nodes + args.python_nodes
+    boot_total = args.cpp_boot + args.go_boot + args.python_boot
 
     # Confirm setup parameters
     if not confirm("Setting up %s node%s (%s C++, %s Go, %s Python) in %s%s region, "
+                   "using %s boot node%s (%s C++, %s Go, %s Python), "
                    "logging to ElasticSearch node at %s, "
                    "running scenarios: %s. Continue?" % (
             total,
@@ -248,11 +253,17 @@ def main():
             args.python_nodes,
             args.region,
             args.zone,
+            boot_total,
+            ("s" if boot_total > 1 else ""),
+            args.cpp_boot,
+            args.go_boot,
+            args.python_boot,
             es,
             args.scenarios)):
         logger.warn("Aborting...")
         raise SystemExit
 
+    # Set images from command line arguments / defaults
     images = {
         'cpp': args.cpp_image,
         'go': args.go_image,
@@ -277,21 +288,22 @@ def main():
             clients.append("python")
             nodenames.append("prepare-python")
 
-        with settings(warn_only=False):
-            with rollback(nodenames):
-                launch_prepare_nodes(args.vpc, args.region, args.zone, clients)
-        with settings(warn_only=False):
-            with rollback(nodenames):
-                ami_ids = prepare_nodes(args.region, args.zone, clients=clients, images=images)
+        if confirm("Create DAG cache with that?"):
+            dag = True
+
+        with settings(warn_only=False), rollback(nodenames):
+            launch_prepare_nodes(args.vpc, args.region, args.zone, clients)
+        with settings(warn_only=False), rollback(nodenames):
+            ami_ids = prepare_nodes(args.region, args.zone, clients=clients, images=images, dag=dag)
 
         # Teardown prepare nodes
         teardown(nodenames)
 
-    # TODO Compary inventory to see how many nodes need to be launched
+    # TODO Compare inventory to see how many nodes need to be launched
     inventory = Inventory()
 
+    # Launch bootnodes
     if (args.cpp_boot or args.go_boot or args.python_boot) and not inventory.bootnodes:
-        # Launch bootnodes
         nodes = {'cpp': [], 'go': [], 'python': []}
         for x in xrange(0, args.cpp_boot):
             nodes['cpp'].append("bootnode-cpp-%s" % x)
@@ -307,8 +319,8 @@ def main():
             nodes)
         run_bootnodes(nodes, images)
 
+    # Launch testnodes
     if (args.cpp_nodes or args.go_nodes or args.python_nodes) and not inventory.clients:
-        # Set testnodes object
         nodes = {'cpp': [], 'go': [], 'python': []}
         nodenames = []
         for x in xrange(0, args.cpp_nodes):
@@ -362,8 +374,8 @@ def main():
     run_scenarios(load_scenarios)
 
     # Teardown
-    # TODO Make teardown optional / saving instance IDs to file for even quicker reuse
-    teardown(nodenames)
+    if confirm("Teardown running nodes?"):
+        teardown(nodenames)
 
 if __name__ == '__main__':
     main()

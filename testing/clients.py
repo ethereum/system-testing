@@ -7,23 +7,25 @@ from tasks import run_containers, stop_containers, start_logging
 from fabric.api import task
 import nodeid_tool
 
-# Docker run options (name, daemonize, ports, entrypoint)
+# Docker run options (daemonize, ports, volumes, entrypoint)
 opts = {}
-opts['cpp'] = ('--name {nodename} -d '
+opts['cpp'] = ('-d '
                '-p 30303:30303 '
                '-p 30303:30303/udp '
                '-p 8080:8080 '
                '-v /opt/data:/opt/data '
+               '-v /opt/dag:/root/.ethash '
                '--entrypoint eth')
 
-opts['go'] = ('--name {nodename} -d '
+opts['go'] = ('-d '
               '-p 30303:30303 '
               '-p 30303:30303/udp '
               '-p 8545:8545 '
               '-v /opt/data:/opt/data '
+              '-v /opt/dag:/tmp/dag '
               '--entrypoint geth')
 
-opts['python'] = ('--name {nodename} -d '
+opts['python'] = ('-d '
                   '-p 30303:30303 '
                   '-p 30303:30303/udp '
                   '-p 4000:4000 '
@@ -32,6 +34,17 @@ opts['python'] = ('--name {nodename} -d '
 
 # Clients command line parameters
 cmds = {}
+cmds['cpp'] = (
+    '--db-path /opt/data '
+    '--verbosity 9 '
+    '--structured-logging '
+    '--json-rpc '
+    '--upnp off '
+    '--public-ip {client_ip} '
+    '--remote {bootstrap_ip} '
+    '--peers {req_num_peers} {mining_state} '
+    '--session-secret {privkey}'
+)
 cmds['go'] = (
     '--datadir /opt/data '
     '--rpc '
@@ -45,17 +58,6 @@ cmds['go'] = (
     '--etherbase primary '
     '--unlock primary '
     '--password /opt/data/password'
-)
-cmds['cpp'] = (
-    '--db-path /opt/data '
-    '--verbosity 9 '
-    '--structured-logging '
-    '--json-rpc '
-    '--upnp off '
-    '--public-ip {client_ip} '
-    '--remote {bootstrap_ip} '
-    '--peers {req_num_peers} {mining_state} '
-    '--session-secret {privkey}'
 )
 cmds['python'] = (
     '--bootstrap_node=enode://{bootstrap_public_key}@{bootstrap_ip}:30303 '
@@ -133,7 +135,7 @@ def start_clients(clients=[], impls=[], images=None, req_num_peers=7, boot='boot
                                                    req_num_peers=req_num_peers,
                                                    privkey=clients_config[nodename]['privkey'],
                                                    mining_state=enable_mining)
-            options[nodename] = opts['go'].format(nodename=nodename)
+            options[nodename] = opts['go']
         elif impl == 'cpp':
             commands[nodename] = cmds['cpp'].format(bootstrap_ip=bootnode['ip'],
                                                     client_ip=clients_config[nodename]['ip'],
@@ -141,7 +143,7 @@ def start_clients(clients=[], impls=[], images=None, req_num_peers=7, boot='boot
                                                     privkey=clients_config[nodename]['privkey'],
                                                     mining_state='--force-mining '
                                                                  '--mining on' if enable_mining else '')
-            options[nodename] = opts['cpp'].format(nodename=nodename)
+            options[nodename] = opts['cpp']
         elif impl == 'python':
             commands[nodename] = cmds['python'].format(bootstrap_public_key=bootnode['pk'],
                                                        bootstrap_ip=bootnode['ip'],
@@ -149,7 +151,7 @@ def start_clients(clients=[], impls=[], images=None, req_num_peers=7, boot='boot
                                                        privkey=clients_config[nodename]['privkey'],
                                                        # mining_state=mining_percentage if enable_mining else '0'
                                                        )
-            options[nodename] = opts['python'].format(nodename=nodename)
+            options[nodename] = opts['python']
         else:
             raise ValueError("No implementation: %s" % impl)
 
@@ -163,7 +165,7 @@ def start_clients(clients=[], impls=[], images=None, req_num_peers=7, boot='boot
     start_logging(clients, inventory.es)
 
 @task
-def stop_clients(clients=[], impls=[]):
+def stop_clients(clients=[], impls=[], boot=None):
     inventory = Inventory()
     nodenames = []
     if not clients:

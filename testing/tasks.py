@@ -128,22 +128,24 @@ def pull(image):
 
 @task
 def build(client, tag):
-    docker("build -t %s %s", tag, client)
+    docker("build -t %s %s" % (tag, client))
 
 @task
 def run(nodename, image, options, command):
     docker("run --name %s %s %s %s" % (nodename, options, image, command))
 
 @task
-def stop(nodename):
+def stop(nodename, rm=True):
     docker("stop %s" % nodename)
+    if rm:
+        docker("rm %s" % nodename)
 
 @task
 def exec_(container, command):
     docker("exec -it %s %s", container, command)
 
 @task
-def run_on(nodename, image, options="", command="", capture=False):
+def run_on(nodename, image, options="", command=""):
     env = machine_env(nodename)
     if not env:
         abort("Error getting machine environment")
@@ -156,17 +158,15 @@ def stop_on(nodename, capture=False, rm=True):
     if not env:
         abort("Error getting machine environment")
     with shell_env(DOCKER_TLS_VERIFY=env['tls'], DOCKER_CERT_PATH=env['cert_path'], DOCKER_HOST=env['host']):
-        stop(nodename)
-        if rm:
-            docker("rm %s" % nodename)
+        stop(nodename, rm=rm)
 
 @task
-def docker_on(nodename, command):
+def docker_on(nodename, command, capture=False):
     env = machine_env(nodename)
     if not env:
         abort("Error getting machine environment")
     with shell_env(DOCKER_TLS_VERIFY=env['tls'], DOCKER_CERT_PATH=env['cert_path'], DOCKER_HOST=env['host']):
-        docker(command)
+        return docker(command, capture=capture)
 
 @task
 def exec_on(nodename, container, command):
@@ -190,7 +190,7 @@ def build_on(nodename, client, tag):
     if not env:
         abort("Error getting machine environment")
     with shell_env(DOCKER_TLS_VERIFY=env['tls'], DOCKER_CERT_PATH=env['cert_path'], DOCKER_HOST=env['host']):
-        build(tag, client)
+        build(client, tag)
 
 @task
 def compose_on(nodename, command):
@@ -203,6 +203,12 @@ def compose_on(nodename, command):
 @task
 def ssh_on(nodename, command):
     machine("ssh %s -- %s" % (nodename, command))
+
+@task
+def teardown(nodenames):
+    # TODO use futures
+    for nodename in nodenames:
+        machine("rm %s" % nodename)
 
 @task
 def launch_prepare_nodes(vpc, region, zone, clients=implementations):
@@ -225,7 +231,7 @@ def launch_prepare_nodes(vpc, region, zone, clients=implementations):
     logger.info("Launch prepare duration: %ss" % (time.time() - start))
 
 @task
-def prepare_nodes(region, zone, clients=implementations, images=None):
+def prepare_nodes(region, zone, clients=implementations, images=None, dag=False):
     """
     Prepare client nodes AMIs using prepare_ami()
     """
@@ -240,10 +246,11 @@ def prepare_nodes(region, zone, clients=implementations, images=None):
                                                  zone,
                                                  "prepare-%s" % client,
                                                  client,
-                                                 image=images[client] if images else None), client)
+                                                 image=images[client] if images else None,
+                                                 dag=dag), client)
                                 for client in clients)
 
-    for future in futures.as_completed(future_to_client, 600):
+    for future in futures.as_completed(future_to_client, 300):
         client = future_to_client[future]
         if future.exception() is not None:
             logger.info('%r generated an exception: %s' % ("prepare-%s" % client, future.exception()))
@@ -398,12 +405,6 @@ def stop_containers(nodenames):
     logger.info("Stop duration: %ss" % (time.time() - start))
 
 @task
-def teardown(nodenames):
-    # TODO use futures
-    for nodename in nodenames:
-        machine("rm %s" % nodename)
-
-@task
 def run_bootnodes(nodes, images):
     options = dict()
     commands = dict()
@@ -412,27 +413,23 @@ def run_bootnodes(nodes, images):
             env = machine_env(nodename)
             ip = env['host'][6:-5]
 
-            # Set options (name, daemonize, ports and entrypoint)
+            # Set options (daemonize, ports and entrypoint)
             if impl == 'cpp':
-                options[nodename] = ('--name %s -d '
-                                     '-p 30303:30303 -p 30303:30303/udp '
-                                     '--entrypoint eth' % nodename)
+                options[nodename] = ('-d -p 30303:30303 -p 30303:30303/udp '
+                                     '--entrypoint eth')
                 commands[nodename] = ('--verbosity 9 --client-name %s '
                                       '--mining off --mode full --upnp off '
                                       '--public-ip %s"' % (nodename, ip))
             elif impl == 'go':
-                options[nodename] = ('--name %s -d '
-                                     '-p 30303:30303 -p 30303:30303/udp '
-                                     '-v /opt/account:/opt/account '
-                                     '--entrypoint geth' % nodename)
+                options[nodename] = ('-d -p 30303:30303 -p 30303:30303/udp '
+                                     '--entrypoint geth')
                 commands[nodename] = ("--nodekeyhex=%s "
                                       "--port=30303 "
                                       "--bootnodes 'enode://%s@10.0.0.0:10000'" % (nodeid_tool.topriv(nodename),
                                                                                    nodeid_tool.topub(nodename)))
             elif impl == 'python':
-                options[nodename] = ('--name %s -d '
-                                     '-p 30303:30303 -p 30303:30303/udp '
-                                     '--entrypoint pyethapp' % nodename)
+                options[nodename] = ('-d -p 30303:30303 -p 30303:30303/udp '
+                                     '--entrypoint pyethapp')
                 commands[nodename] = ''
             else:
                 raise ValueError("No implementation: %s" % impl)
@@ -442,7 +439,7 @@ def run_bootnodes(nodes, images):
 
 # TODO per-user nodenames / tags
 @task
-def prepare_ami(region, zone, nodename, client, image=None):
+def prepare_ami(region, zone, nodename, client, image=None, dag=False):
     """
     Prepare client AMI
     """
@@ -452,7 +449,6 @@ def prepare_ami(region, zone, nodename, client, image=None):
     # Get our Instance ID
     inspect = json.loads(machine("inspect %s" % nodename, capture=True))
     instance_id = inspect['Driver']['InstanceId']
-    # machine("ssh %s env" % nodename)
 
     # Pull base image
     pull_on(nodename, image)
@@ -462,6 +458,27 @@ def prepare_ami(region, zone, nodename, client, image=None):
     ssh_on(nodename, "sudo apt-get install -q -y python-pip")
     ssh_on(nodename, "sudo pip install elasticsearch")
     ssh_on(nodename, "git clone --depth=1 --branch docker-machine https://github.com/ethereum/system-testing")
+
+    # Generate DAG
+    if client == 'cpp':
+        ssh_on(nodename, "sudo mkdir /opt/dag")  # see generate_dag()
+    elif client == 'go':
+        ssh_on(nodename, "sudo touch /opt/dag")  # see generate_dag()
+    if dag and client != 'python':
+        generate_dag(nodename, client, image)
+        # FIXME For some reason, 'docker run' exits with 0
+        # but never returns, so somewhere between futures,
+        # Fabric and docker, there's an unhandled timeout
+        # while generating DAG caches and getting no output...
+        # We poll for 'Exited' in 'docker ps' and run with
+        # -d in generate_dag() for now...
+        dag_done = False
+        while dag_done is False:
+            time.sleep(5)
+            ps = docker_on(nodename, "ps -a", capture=True)
+            if "Exited" in ps:
+                logging.info("DAG done for %s" % nodename)
+                dag_done = True
 
     # Stop the instance
     machine("stop %s" % nodename)
@@ -534,35 +551,34 @@ def create_accounts(nodenames, image):
     logger.info("New account duration: %ss" % (time.time() - start))
 
 @task
-def generate_dags(nodes, images):
+def generate_dag(nodename, client, image):
     """
-    Generate DAGs on nodes
+    Generate DAG on node
     """
-    options = dict()
-    commands = dict()
-    for impl in nodes:
-        for nodename in nodes[impl]:
-            # Set options (name, daemonize, ports and entrypoint)
-            if impl == 'cpp':
-                options[nodename] = ('--name %s -d '
-                                     '--volume /opt/data:/opt/data '
-                                     '--entrypoint eth' % nodename)
-                commands[nodename] = "--create-dag"
-            elif impl == 'go':
-                options[nodename] = ('--name %s -d '
-                                     '--volume /opt/data:/opt/data '
-                                     '--entrypoint geth' % nodename)
-                commands[nodename] = "makedag"
-            elif impl == 'python':
-                options[nodename] = ('--name %s -d '
-                                     '--volume /opt/data:/opt/data '
-                                     '-p 30303:30303 -p 30303:30303/udp '
-                                     '--entrypoint pyethapp' % nodename)
-                commands[nodename] = 'makedag'  # TODO
-            else:
-                raise ValueError("No implementation: %s" % impl)
 
-    run_containers(nodes, images, options, commands)
+    # Set options (volume and entrypoint)
+    # C++ saves the DAG cache in the ~/.ethash folder and Go in
+    # the /tmp/dag file, so we have to mount those as volumes,
+    # after creating the host folder and file.
+    if client == 'cpp':
+        options = ('-d '  # using -d, see note in prepare_ami()
+                   '--volume /opt/dag:/root/.ethash '
+                   '--entrypoint eth')
+        command = "--create-dag -1"
+    elif client == 'go':
+        options = ('-d '
+                   '--volume /opt/dag:/tmp/dag '
+                   '--entrypoint geth')
+        command = "makedag"
+    elif client == 'python':
+        options = ('-d '
+                   '--volume /opt/data:/opt/data '
+                   '--entrypoint pyethapp')
+        command = 'makedag'  # TODO
+    else:
+        raise ValueError("No implementation: %s" % client)
+
+    run_on(nodename, image, options, command)
 
 @task
 def start_logging(nodenames, elasticsearch_ip):
