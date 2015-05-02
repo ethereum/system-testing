@@ -112,7 +112,7 @@ def parse_arguments(parser):
         help="Scenarios to test (default: %(default)s)")
     parser.add_argument(
         "command",
-        choices=["ls", "stop", "cleanup"],
+        choices=["ls", "stop", "rm", "cleanup"],
         nargs='?',
         help="Optional commands for maintenance")
     parser.add_argument(
@@ -196,6 +196,9 @@ def main():
     elif args.command == "stop":
         stop_containers(args.parameters)
         raise SystemExit
+    elif args.command == "rm":
+        for nodename in args.parameters:
+            machine("rm %s" % nodename)
     elif args.command == "cleanup":
         # Cleanup - TODO per implementation, filters and use futures
         inventory = Inventory()

@@ -158,7 +158,9 @@ def stop_on(nodename, capture=False, rm=True):
     if not env:
         abort("Error getting machine environment")
     with shell_env(DOCKER_TLS_VERIFY=env['tls'], DOCKER_CERT_PATH=env['cert_path'], DOCKER_HOST=env['host']):
-        stop(nodename, rm=rm)
+        stop(nodename, rm=False)
+        if rm:
+            docker("rm %s" % nodename)
 
 @task
 def docker_on(nodename, command, capture=False):

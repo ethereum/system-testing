@@ -170,14 +170,10 @@ def stop_clients(clients=[], impls=[], boot=None):
     nodenames = []
     if not clients:
         for nodename, ip in inventory.clients.items():
-            if nodename.startswith('testnode'):
-                nodenames.append(nodename)
+            nodenames.append(nodename)
     else:
-        # Get nodenames from client IP
-        for nodename, ip in inventory.clients.items():
-            for client in clients:
-                if client == ip:
-                    nodenames.append(nodename)
+        for nodename in clients:
+            nodenames.append(nodename)
 
     if nodenames:
         stop_containers(nodenames)
