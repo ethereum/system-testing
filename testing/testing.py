@@ -199,6 +199,7 @@ def main():
     elif args.command == "rm":
         for nodename in args.parameters:
             machine("rm %s" % nodename)
+        raise SystemExit
     elif args.command == "cleanup":
         # Cleanup - TODO per implementation, filters and use futures
         inventory = Inventory()
@@ -291,6 +292,7 @@ def main():
             clients.append("python")
             nodenames.append("prepare-python")
 
+        dag = False
         if confirm("Create DAG cache with that?"):
             dag = True
 
