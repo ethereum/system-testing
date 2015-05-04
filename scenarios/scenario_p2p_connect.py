@@ -66,7 +66,7 @@ def test_started(clients):
     assert_started(len(clients))
 
 def test_connections(clients):
-    assert_connected(minconnected=len(clients), minpeers=len(clients) - 2)
+    assert_connected(minconnected=len(clients), minpeers=len(clients))
 
     guids = [nodeid_tool.topub(ext_id.encode('utf-8')) for ext_id in clients]
     for guid in guids:

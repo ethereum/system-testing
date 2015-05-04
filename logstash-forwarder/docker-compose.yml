@@ -1,0 +1,5 @@
+forwarder:
+  build: .
+  volumes:
+    - /var/log/syslog:/var/log/syslog
+  restart: always

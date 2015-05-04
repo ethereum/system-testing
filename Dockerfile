@@ -30,7 +30,7 @@ RUN chmod +x /usr/bin/docker
 ADD requirements.txt requirements.txt
 RUN pip install -r requirements.txt
 
-# Add existing machines
+# Add existing machines, which can be saved using `docker cp <container>:/root/.docker/machine/machines ./`
 # ADD machines /root/.docker/machine/machines
 
 # Install system-testing

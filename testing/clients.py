@@ -3,7 +3,7 @@ Ethereum clients support
 """
 
 from testing import Inventory
-from tasks import run_containers, stop_containers, start_logging
+from tasks import run_containers, stop_containers
 from fabric.api import task
 import nodeid_tool
 
@@ -15,6 +15,7 @@ opts['cpp'] = ('-d '
                '-p 8080:8080 '
                '-v /opt/data:/opt/data '
                '-v /opt/dag:/root/.ethash '
+               '--log-driver syslog '
                '--entrypoint eth')
 
 opts['go'] = ('-d '
@@ -23,6 +24,7 @@ opts['go'] = ('-d '
               '-p 8545:8545 '
               '-v /opt/data:/opt/data '
               '-v /opt/dag:/tmp/dag '
+              '--log-driver syslog '
               '--entrypoint geth')
 
 opts['python'] = ('-d '
@@ -30,6 +32,7 @@ opts['python'] = ('-d '
                   '-p 30303:30303/udp '
                   '-p 4000:4000 '
                   '-v /opt/data:/opt/data '
+                  '--log-driver syslog '
                   '--entrypoint pyethapp')
 
 # Clients command line parameters
@@ -61,6 +64,7 @@ cmds['go'] = (
 )
 cmds['python'] = (
     '--bootstrap_node=enode://{bootstrap_public_key}@{bootstrap_ip}:30303 '
+    '--log-json '
     '-c data_dir=/opt/data '
     '-c accounts.privkeys_hex=[{privkey}] '
     '-c p2p.min_peers={req_num_peers} '
@@ -160,9 +164,6 @@ def start_clients(clients=[], impls=[], images=None, req_num_peers=7, boot='boot
 
     # All nodes per implementation, with optional images, and all options and commands per nodename
     run_containers(nodes, images, options, commands)
-
-    # Start logging
-    start_logging(clients, inventory.es)
 
 @task
 def stop_clients(clients=[], impls=[], boot=None):

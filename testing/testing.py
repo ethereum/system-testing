@@ -299,7 +299,7 @@ def main():
         with settings(warn_only=False), rollback(nodenames):
             launch_prepare_nodes(args.vpc, args.region, args.zone, clients)
         with settings(warn_only=False), rollback(nodenames):
-            ami_ids = prepare_nodes(args.region, args.zone, clients=clients, images=images, dag=dag)
+            ami_ids = prepare_nodes(args.region, args.zone, es, clients=clients, images=images, dag=dag)
 
         # Teardown prepare nodes
         teardown(nodenames)

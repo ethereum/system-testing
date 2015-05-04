@@ -1,0 +1,26 @@
+elasticsearch:
+  build: elasticsearch
+  ports:
+    - "9200:9200"
+  volumes:
+    - /var/lib/elasticsearch:/var/lib/elasticsearch
+  restart: always
+logstash:
+  build: logstash
+  ports:
+    - "5000:5000"
+  links:
+    - elasticsearch
+  restart: always
+kibana:
+  build: kibana
+  links:
+    - elasticsearch
+  restart: always
+nginx:
+  build: nginx
+  ports:
+    - "443:443"
+  links:
+    - kibana
+  restart: always

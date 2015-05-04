@@ -233,7 +233,7 @@ def launch_prepare_nodes(vpc, region, zone, clients=implementations):
     logger.info("Launch prepare duration: %ss" % (time.time() - start))
 
 @task
-def prepare_nodes(region, zone, clients=implementations, images=None, dag=False):
+def prepare_nodes(region, zone, es, clients=implementations, images=None, dag=False):
     """
     Prepare client nodes AMIs using prepare_ami()
     """
@@ -247,6 +247,7 @@ def prepare_nodes(region, zone, clients=implementations, images=None, dag=False)
                                                  region,
                                                  zone,
                                                  "prepare-%s" % client,
+                                                 es,
                                                  client,
                                                  image=images[client] if images else None,
                                                  dag=dag), client)
@@ -279,20 +280,15 @@ def setup_es(vpc, region, zone, user, passwd):
             # Launch ES node
             create(vpc, region, zone, nodename, securitygroup="elasticsearch")
 
-            # Get elk-compose
-            local("git clone --depth=1 https://github.com/caktux/elk-compose.git")
-
-            # Expose 9200 in our case
-            with lcd('elk-compose'):
-                local('sed -i "s/build\: elasticsearch/&\\n'
-                      '  ports\:\\n'
-                      '    - \"9200\:9200\"/" docker-compose.yml')
-
             # Generate certificate and key for logstash-forwarder
             local("openssl req -x509 -batch -nodes -newkey rsa:2048 "
                   "-keyout elk-compose/logstash/conf/logstash-forwarder.key "
                   "-out elk-compose/logstash/conf/logstash-forwarder.crt "
                   "-subj /CN=logs.ethdev.com")
+
+            # Copy to logstash-forwarder's Dockerfile folder
+            local("cp elk-compose/logstash/conf/logstash-forwarder.crt logstash-forwarder/")
+            local("cp elk-compose/logstash/conf/logstash-forwarder.key logstash-forwarder/")
 
             # Install htpasswd
             local("sudo apt-get install -q -y apache2-utils")
@@ -438,10 +434,17 @@ def run_bootnodes(nodes, images):
 
     run_containers(nodes, images, options, commands)
 
+@task
+def scp_to(nodename, src, dest):
+    env = machine_env(nodename)
+    ip = env['host'][6:-5]
+    local("scp -q -o StrictHostKeyChecking=no "
+          "-i ~/.docker/machine/machines/%s/id_rsa "
+          "%s ubuntu@%s:%s" % (nodename, src, ip, dest))
 
 # TODO per-user nodenames / tags
 @task
-def prepare_ami(region, zone, nodename, client, image=None, dag=False):
+def prepare_ami(region, zone, nodename, es, client, image=None, dag=False):
     """
     Prepare client AMI
     """
@@ -455,11 +458,21 @@ def prepare_ami(region, zone, nodename, client, image=None, dag=False):
     # Pull base image
     pull_on(nodename, image)
 
-    # TODO Create new docker image w/ logstash-forwarder
-    # Clone the repo to get logutils/teees.py for now
-    ssh_on(nodename, "sudo apt-get install -q -y python-pip")
-    ssh_on(nodename, "sudo pip install elasticsearch")
-    ssh_on(nodename, "git clone --depth=1 --branch docker-machine https://github.com/ethereum/system-testing")
+    # Create docker container w/ logstash-forwarder
+    # Build logstash-forwarder
+    with shell_env(ELASTICSEARCH_IP=es), lcd('logstash-forwarder'):
+        compose_on(nodename, "build")
+
+    # Run logstash-forwarder, using run_on so we can pass --add-host
+    with lcd('logstash-forwarder'):
+        run_on(
+            nodename,
+            "logstashforwarder_forwarder",
+            ("-d "
+             "-v /var/log/syslog:/var/log/syslog "
+             "--add-host logs.ethdev.com:%s "
+             "--restart always" % es))
+        # compose_on(nodename, "up -d")  # ElasticSearch IP
 
     # Generate DAG
     if client == 'cpp':
@@ -581,32 +594,6 @@ def generate_dag(nodename, client, image):
         raise ValueError("No implementation: %s" % client)
 
     run_on(nodename, image, options, command)
-
-@task
-def start_logging(nodenames, elasticsearch_ip):
-    """
-    Start logging on nodes, we need to use ssh_on() so the `docker logs` process
-    can run on the remote host itself instead of locally, which would create quite
-    a bottleneck.
-    """
-    command = ("'nohup "
-               "sudo docker logs --follow=true {nodename} 2>&1 | "
-               "./system-testing/logutils/teees.py %s guid,{pubkey} >& /dev/null < /dev/null &'" % elasticsearch_ip)
-
-    start = time.time()
-    with futures.ThreadPoolExecutor(max_workers=10) as executor:
-        future_node = dict((executor.submit(ssh_on,
-                                            nodename,
-                                            command.format(nodename=nodename,
-                                                           pubkey=nodeid_tool.topub(nodename))), nodename)
-                           for nodename in nodenames)
-
-    for future in futures.as_completed(future_node, 30):
-        nodename = future_node[future]
-        if future.exception() is not None:
-            logger.info('%r generated an exception: %s' % (nodename, future.exception()))
-
-    logger.info("Start logging duration: %ss" % (time.time() - start))
 
 @task
 def run_scenarios(scenarios):

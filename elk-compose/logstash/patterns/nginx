@@ -1,0 +1,5 @@
+NGUSERNAME [a-zA-Z\.\@\-\+_%]+
+NGUSER %{NGUSERNAME}
+NGX_ACCESS_LOG %{IPORHOST:clientip} %{NGUSER:ident} %{NGUSER:auth} \[%{HTTPDATE:nginx_timestamp}\] "%{WORD:verb} %{URIPATHPARAM:request} HTTP/%{NUMBER:httpversion}" %{NUMBER:response} (?:%{NUMBER:bytes}|-) (?:"(?:%{URI:referrer}|-)"|%{QS:referrer}) %{QS:agent}
+NGINX_ERROR_DATE_TIME %{YEAR}\/%{MONTHNUM}\/%{MONTHDAY} %{TIME}
+NGINX_ERROR_LOG %{NGINX_ERROR_DATE_TIME:nginx_error_timestamp} \[%{LOGLEVEL:err_level}\] %{POSINT:err_pid}\#%{NUMBER}: \*%{NUMBER} %{DATA:err_msg}, client: %{IPORHOST:err_clientip}, server: %{IPORHOST:err_serverip}, request: \"%{DATA:err_request}\"(?:, upstream: \"%{DATA:err_upstream}\")?(?:, host: \"%{IPORHOST:err_host}\")?(?:, referrer: \"%{URI:err_referrer}\")?
