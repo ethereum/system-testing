@@ -1,10 +1,10 @@
 import time
 import pytest
-from elasticsearch_dsl import Search
+from elasticsearch_dsl import Search, F
 from testing import nodeid_tool
 from testing.testing import Inventory
 from testing.clients import start_clients, stop_clients
-from logutils.eshelper import client, F, log_scenario, assert_started, assert_connected
+from logutils.eshelper import client, log_scenario, assert_started, assert_connected
 
 # to how many peers should a connection be established
 req_peer = 5
@@ -13,7 +13,7 @@ scenario_run_time_s = 45
 impls = ['go']
 boot = 'bootnode-go-0'
 # if you want to evaluate client logs on the hosts, don't stop the clients
-stop_clients_at_scenario_end = False
+stop_clients_at_scenario_end = True
 
 def log_event(event, **kwargs):
     log_scenario(name='p2p_connect', event=event, **kwargs)
@@ -63,15 +63,15 @@ def clients():
 
 
 def test_started(clients):
-    assert_started(len(clients))
+    assert_started(len(clients), offset=scenario_run_time_s + 30)
 
 def test_connections(clients):
-    assert_connected(minconnected=len(clients), minpeers=len(clients))
+    assert_connected(minconnected=len(clients), minpeers=len(clients), offset=scenario_run_time_s + 30)
 
     guids = [nodeid_tool.topub(ext_id.encode('utf-8')) for ext_id in clients]
     for guid in guids:
         s = Search(client)
-        s = s.filter(F('term', at_message='p2p.connected'))
+        s = s.filter(F('term', **{'p2p.connected': ''}))
         s = s.filter(F('term', guid=guid))
         s = s.filter(F('term', remote_id=guid))
         response = s.execute()

@@ -27,8 +27,8 @@ class LogstashFormatter(object):
 
     def __init__(self, defaults=dict(), source_host=None, json_default=_default_json_default):
         """
-        :param defaults:       extra fields available in all logs
-        :param source_host: the source host
+        :param defaults:     extra fields available in all logs
+        :param source_host:  the source host
         :param json_default: Default JSON representation for unknown types,
                              by default coerce everything to a string
         """
@@ -51,10 +51,10 @@ class LogstashFormatter(object):
 
         logr = self.defaults.copy()
 
-        logr.update({'@message': msg,
-                     '@timestamp': ts,
-                     '@source_host': self.source_host,
-                     '@fields': self._build_fields(logr, fields)})
+        logr.update({'@timestamp': ts,
+                     '@fields': self._build_fields(logr, fields),
+                     'host': self.source_host,
+                     'message': msg})
 
         return json.dumps(logr, default=self.json_default)
 

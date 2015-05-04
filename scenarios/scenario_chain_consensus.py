@@ -100,7 +100,7 @@ def client_count():
 
 
 def test_consensus(client_count):
-    assert_connected(minconnected=client_count, minpeers=client_count - 2)
+    assert_connected(minconnected=client_count, minpeers=client_count)
     num_agreeing_clients = consensus(offset=max_time_to_reach_consensus)
     print '%d out of %d clients are on the same chain' % (num_agreeing_clients,
                                                           client_count)

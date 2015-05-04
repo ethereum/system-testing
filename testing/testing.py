@@ -274,6 +274,7 @@ def main():
         'python': args.python_image
     }
 
+    # TODO Compare inventory to see how many nodes need to be prepared
     # Prepare nodes, creates new AMIs / stores IDs to file for reuse
     try:
         with open('amis.json', 'r') as f:

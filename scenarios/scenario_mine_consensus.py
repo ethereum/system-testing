@@ -59,7 +59,7 @@ def test_startup(clients):
     assert_started(minstarted=len(clients))
 
 def test_connections(clients):
-    assert_connected(minconnected=len(clients), minpeers=len(clients) - 2)
+    assert_connected(minconnected=len(clients), minpeers=len(clients))
 
 def test_mining_started(clients):
     assert_mining(minmining=len(clients))

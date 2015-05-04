@@ -60,7 +60,7 @@ def run(run_clients):
     recipient = clients[1]
 
     rpc_host = inventory.inventory[sender][0]
-    rpc_port = 20000  # hard coded FIXME if we get multiple clients per ec
+    rpc_port = 8545  # hard coded FIXME if we get multiple clients per ec
     endpoint = 'http://%s:%d' % (rpc_host, rpc_port)
 
     sending_address = coinbase(endpoint)

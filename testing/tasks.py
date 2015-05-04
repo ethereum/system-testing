@@ -127,12 +127,12 @@ def pull(image):
     docker("pull %s" % image)
 
 @task
-def build(client, tag):
-    docker("build -t %s %s" % (tag, client))
+def build(folder, tag):
+    docker("build -t %s %s" % (tag, folder))
 
 @task
-def run(nodename, image, options, command):
-    docker("run --name %s %s %s %s" % (nodename, options, image, command))
+def run(name, image, options, command):
+    docker("run --name %s %s %s %s" % (name, options, image, command))
 
 @task
 def stop(nodename, rm=True):
@@ -145,12 +145,14 @@ def exec_(container, command):
     docker("exec -it %s %s", container, command)
 
 @task
-def run_on(nodename, image, options="", command=""):
+def run_on(nodename, image, options="", command="", name=None):
+    if name is None:
+        name = nodename
     env = machine_env(nodename)
     if not env:
         abort("Error getting machine environment")
     with shell_env(DOCKER_TLS_VERIFY=env['tls'], DOCKER_CERT_PATH=env['cert_path'], DOCKER_HOST=env['host']):
-        run(nodename, image, options, command)
+        run(name, image, options, command)
 
 @task
 def stop_on(nodename, capture=False, rm=True):
@@ -159,7 +161,8 @@ def stop_on(nodename, capture=False, rm=True):
         abort("Error getting machine environment")
     with shell_env(DOCKER_TLS_VERIFY=env['tls'], DOCKER_CERT_PATH=env['cert_path'], DOCKER_HOST=env['host']):
         stop(nodename, rm=False)
-        if rm:
+    if rm:
+        with shell_env(DOCKER_TLS_VERIFY=env['tls'], DOCKER_CERT_PATH=env['cert_path'], DOCKER_HOST=env['host']):
             docker("rm %s" % nodename)
 
 @task
@@ -187,12 +190,12 @@ def pull_on(nodename, image):
         pull(image)
 
 @task
-def build_on(nodename, client, tag):
+def build_on(nodename, folder, tag):
     env = machine_env(nodename)
     if not env:
         abort("Error getting machine environment")
     with shell_env(DOCKER_TLS_VERIFY=env['tls'], DOCKER_CERT_PATH=env['cert_path'], DOCKER_HOST=env['host']):
-        build(client, tag)
+        build(folder, tag)
 
 @task
 def compose_on(nodename, command):
@@ -459,20 +462,23 @@ def prepare_ami(region, zone, nodename, es, client, image=None, dag=False):
     pull_on(nodename, image)
 
     # Create docker container w/ logstash-forwarder
-    # Build logstash-forwarder
-    with shell_env(ELASTICSEARCH_IP=es), lcd('logstash-forwarder'):
-        compose_on(nodename, "build")
+    # Build logstash-forwarder directly, docker-compose doesn't seem to
+    # like getting called concurrently
+    # with lcd('logstash-forwarder'):
+    #     compose_on(nodename, "build")
+    build_on(nodename, "logstash-forwarder", "forwarder")
 
     # Run logstash-forwarder, using run_on so we can pass --add-host
-    with lcd('logstash-forwarder'):
-        run_on(
-            nodename,
-            "logstashforwarder_forwarder",
-            ("-d "
-             "-v /var/log/syslog:/var/log/syslog "
-             "--add-host logs.ethdev.com:%s "
-             "--restart always" % es))
-        # compose_on(nodename, "up -d")  # ElasticSearch IP
+    # with lcd('logstash-forwarder'):
+    #     compose_on(nodename, "up -d")  # ElasticSearch IP
+    run_on(
+        nodename,
+        "forwarder",
+        ("-d "
+         "-v /var/log/syslog:/var/log/syslog "
+         "--add-host logs.ethdev.com:%s "
+         "--restart always" % es),
+        name="forwarder")
 
     # Generate DAG
     if client == 'cpp':
@@ -488,11 +494,12 @@ def prepare_ami(region, zone, nodename, es, client, image=None, dag=False):
         # We poll for 'Exited' in 'docker ps' and run with
         # -d in generate_dag() for now...
         dag_done = False
+        logging.info("Generating DAG on %s..." % nodename)
         while dag_done is False:
             time.sleep(5)
             ps = docker_on(nodename, "ps -a", capture=True)
             if "Exited" in ps:
-                logging.info("DAG done for %s" % nodename)
+                logging.info("DAG done on %s" % nodename)
                 dag_done = True
 
     # Stop the instance
