@@ -1,7 +1,6 @@
 from elasticsearch import Elasticsearch
 from elasticsearch_dsl import Search
-from elasticsearch_dsl import Q
-from elasticsearch_dsl import F
+from elasticsearch_dsl import F, Q
 import time
 import json
 import datetime
@@ -52,7 +51,7 @@ def assert_started(minstarted, offset=90):
     """
     s = Search(client)
     s = s.filter(time_range_filter(field="json_message.starting.ts", offset=offset))
-    s.aggs.bucket('by_host', 'terms', field='host', size=0)
+    s.aggs.bucket('by_host', 'terms', field='syslog_hostname.raw', size=0)
     response = s.execute()
     # pprint(response)
 
@@ -73,7 +72,7 @@ def assert_connected(minconnected=2, minpeers=2, offset=90):
     """
     s = Search(client)
     s = s.filter(time_range_filter(field="json_message.p2p.connected.ts", offset=offset))
-    s.aggs.bucket('by_host', 'terms', field='host', size=0)
+    s.aggs.bucket('by_host', 'terms', field='syslog_hostname.raw', size=0)
     response = s.execute()
     # pprint(response)
 
@@ -91,23 +90,39 @@ def assert_connected(minconnected=2, minpeers=2, offset=90):
         assert num_connected >= minpeers, ('at least one client only connected to %d '
                                            '(of %d expected) other nodes"' % (num_connected, minpeers))
 
-def consensus(offset=10):
+def consensus(offset=60):
     """
     check for 'eth.chain.new_head' messages
     and return the max number of clients, that had the same head
     during the last `offset` seconds.
     """
     s = Search(client)
-    s = s.query(Q("match", message='eth.chain.new_head'))
-    s = s.filter(time_range_filter(offset=offset))
+    # s = s.query(Q('match', message='eth.chain.new_head'))
+    s = s.filter('exists', field='json_message.eth.chain.new_head.block_number')
+    s = s.sort({'json_message.eth.chain.new_head.ts': {'order': 'desc', 'ignore_unmapped': 'true'}})
+    response = s.execute()
+
+    # Get latest block number
+    x = max(hit['_source']['json_message']['eth.chain.new_head']['block_number'] for hit in response.hits.hits)
+
     # By default, the buckets are ordered by their doc_count descending
-    s.aggs.bucket('by_block_hash', 'terms', field='@fields.block_hash', size=10)
+    # s.aggs.bucket('by_block_hash', 'terms', field='json_message.eth.chain.new_head.block_hash', size=3)
+
+    # Reach consensus around latest block number
+    s = Search(client)
+    s = s.filter(time_range_filter(field="json_message.eth.chain.new_head.ts", offset=offset))
+    s.aggs.bucket('latest', 'range',
+                  field='json_message.eth.chain.new_head.block_number',
+                  ranges=[{"from": x - 1, "to": x + 1}]).bucket(
+                      'by_block_hash', 'terms',
+                      field='json_message.eth.chain.new_head.block_hash',
+                      size=3)
     # s = s[10:10]
     response = s.execute()
-    pprint(response)
+    # pprint(response)
 
     if response:
-        return max(tag.doc_count for tag in response.aggregations.by_block_hash.buckets)
+        return max(tag.doc_count for tag in response.aggregations.latest.buckets[0].by_block_hash.buckets)
     else:
         return 0
 
@@ -117,7 +132,6 @@ def assert_consensus(offset=10):
     check for 'eth.chain.new_head' messages
     and return the max number of clients, that had the same head
     during the last `offset` seconds.
-
     """
     s = Search(client)
     s = s.query(Q("match", message='eth.chain.new_head'))
@@ -146,15 +160,15 @@ def assert_mining(minmining):
     """
     s = Search(client)
     s = s.filter(F('term', message='eth.miner.new_block'))
-    s.aggs.bucket('by_guid', 'terms', field='guid', size=0)
+    s.aggs.bucket('by_host', 'terms', field='syslog_hostname.raw', size=0)
     response = s.execute()
     # pprint(response)
 
     print "passed for: "
-    for tag in response.aggregations.by_guid.buckets:
-        print '  ' + ip_from_guid(tag.key) + ', blocks mined: %d' % tag.doc_count
+    for tag in response.aggregations.by_host.buckets:
+        print '  %s, blocks mined: %d' % (tag.key, tag.doc_count)  # ip_from_guid(tag.key)
 
-    num_mining = len(response.aggregations.by_guid.buckets)
+    num_mining = len(response.aggregations.by_host.buckets)
     assert num_mining >= minmining, 'only %d clients mining, expexted at least %d' % (num_mining, minmining)
 
 

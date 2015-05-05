@@ -50,6 +50,49 @@ def machine(cmd, capture=False):
     """
     return local("docker-machine %s" % cmd, capture=capture)
 
+def machine_env(nodename):
+    env = {}
+    env_export = machine("env %s" % nodename, capture=True)
+    exports = env_export.splitlines()
+    for export in exports:
+        export = export[7:]  # remove "export "...
+        if export.startswith("DOCKER_TLS_VERIFY"):
+            logger.debug(export)
+            tls = export.split("=")[-1]
+        if export.startswith("DOCKER_CERT_PATH"):
+            logger.debug(export)
+            cert_path = export.split("=")[-1][1:-1]  # remove quotes
+        if export.startswith("DOCKER_HOST"):
+            logger.debug(export)
+            host = export.split("=")[-1]
+    if not tls or not cert_path or not host:
+        logger.debug(exports)
+        return False
+    env['tls'] = tls
+    env['cert_path'] = cert_path
+    env['host'] = host
+    return env
+
+def active(nodename):
+    machine("active %s" % nodename)
+
+def pull(image):
+    docker("pull %s" % image)
+
+def build(folder, tag):
+    docker("build -t %s %s" % (tag, folder))
+
+def run(name, image, options, command):
+    docker("run --name %s %s %s %s" % (name, options, image, command))
+
+def stop(nodename, rm=True):
+    docker("stop %s" % nodename)
+    if rm:
+        docker("rm %s" % nodename)
+
+def exec_(container, command):
+    docker("exec -it %s %s", container, command)
+
 @task
 def machine_list():
     """
@@ -94,55 +137,6 @@ def cleanup(containers):
             docker("stop %s" % container)
             docker("rm $(docker ps -a -q)")
             docker("rmi $(docker images -f 'dangling=true' -q)")
-
-def machine_env(nodename):
-    env = {}
-    env_export = machine("env %s" % nodename, capture=True)
-    exports = env_export.splitlines()
-    for export in exports:
-        export = export[7:]  # remove "export "...
-        if export.startswith("DOCKER_TLS_VERIFY"):
-            logger.debug(export)
-            tls = export.split("=")[-1]
-        if export.startswith("DOCKER_CERT_PATH"):
-            logger.debug(export)
-            cert_path = export.split("=")[-1][1:-1]  # remove quotes
-        if export.startswith("DOCKER_HOST"):
-            logger.debug(export)
-            host = export.split("=")[-1]
-    if not tls or not cert_path or not host:
-        logger.debug(exports)
-        return False
-    env['tls'] = tls
-    env['cert_path'] = cert_path
-    env['host'] = host
-    return env
-
-@task
-def active(nodename):
-    machine("active %s" % nodename)
-
-@task
-def pull(image):
-    docker("pull %s" % image)
-
-@task
-def build(folder, tag):
-    docker("build -t %s %s" % (tag, folder))
-
-@task
-def run(name, image, options, command):
-    docker("run --name %s %s %s %s" % (name, options, image, command))
-
-@task
-def stop(nodename, rm=True):
-    docker("stop %s" % nodename)
-    if rm:
-        docker("rm %s" % nodename)
-
-@task
-def exec_(container, command):
-    docker("exec -it %s %s", container, command)
 
 @task
 def run_on(nodename, image, options="", command="", name=None):

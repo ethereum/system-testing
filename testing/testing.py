@@ -2,9 +2,10 @@
 """
 Ethereum system-testing
 
-    TODO Re-implement logging using logstash-forwarder
-    TODO Ask to clean up AMIs? (previous ones just get cleaned up on fresh runs [without amis.json])
+    TODO User-defined identifier (suffix) to allow multiple testers per region
+    TODO Reduce number of calls to Inventory()
 
+    TODO Ask to clean up AMIs? (previous ones just get cleaned up on fresh runs [without amis.json])
     TODO Make a futures wrapper for better pattern reuse (in tasks.py)
 """
 import os
