@@ -63,10 +63,15 @@ def clients():
 
 
 def test_started(clients):
-    assert_started(len(clients), offset=scenario_run_time_s * 3)
+    len_clients = len(clients)
+    total_offset = len_clients * 15 + scenario_run_time_s * 3
+    assert_started(len_clients, offset=total_offset)
 
 def test_connections(clients):
-    assert_connected(minconnected=len(clients), minpeers=len(clients), offset=scenario_run_time_s * 2)
+    len_clients = len(clients)
+    total_offset = len_clients * 15 + scenario_run_time_s * 3
+    min_peers = len_clients if len_clients <= 3 else 3
+    assert_connected(minconnected=len_clients, minpeers=min_peers, offset=total_offset)
 
     guids = [nodeid_tool.topub(ext_id.encode('utf-8')) for ext_id in clients]
     for guid in guids:
