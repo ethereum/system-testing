@@ -23,13 +23,14 @@ docker-compose run testing
 
 #### Directly
 ```
-apt-get install libfreetype6-dev python-pygraphviz python python-dev python-pip python-virtualenv
+apt-get install graphviz-dev libfreetype6-dev pkg-config python python-dev
 git clone https://github.com/ethereum/system-testing.git
 cd system-testing
 virtualenv venv  # optional
 source venv/bin/activate  # optional
 pip install -e .
 ```
+You will also need [docker-machine](https://docs.docker.com/machine/), [docker-compose](https://docs.docker.com/compose/install/) and [docker](https://docs.docker.com/installation/ubuntulinux/).
 
 ### Usage
 
@@ -41,7 +42,7 @@ usage: testing [-h] [-v] [-c CPP_NODES] [--cpp-image CPP_IMAGE]
                [--go-boot GO_BOOT] [-p PYTHON_NODES]
                [--python-image PYTHON_IMAGE] [--python-boot PYTHON_BOOT]
                [-e ELASTICSEARCH] [-i VPC] [-r REGION] [-z ZONE] [-d DEBUG]
-               [-s [{tx_propagation,chain_consensus,p2p_connect,mine_consensus} [{tx_propagation,chain_consensus,p2p_connect,mine_consensus} ...]]]
+               [-s [{p2p_connect,tx_propagation,chain_consensus,mine_consensus} [{p2p_connect,tx_propagation,chain_consensus,mine_consensus} ...]]]
                [{ls,stop,rm,cleanup}] [parameters [parameters ...]]
 
 positional arguments:
@@ -75,11 +76,23 @@ optional arguments:
   -z ZONE, --zone ZONE  AWS Zone (default: b)
   -d DEBUG, --debug DEBUG
                         Debug (default: False)
-  -s [{tx_propagation,chain_consensus,p2p_connect,mine_consensus} [{tx_propagation,chain_consensus,p2p_connect,mine_consensus} ...]], --scenarios [{tx_propagation,chain_consensus,p2p_connect,mine_consensus} [{tx_propagation,chain_consensus,p2p_connect,mine_consensus} ...]]
+  -s [{p2p_connect,tx_propagation,chain_consensus,mine_consensus} [{p2p_connect,tx_propagation,chain_consensus,mine_consensus} ...]], --scenarios [{p2p_connect,tx_propagation,chain_consensus,mine_consensus} [{p2p_connect,tx_propagation,chain_consensus,mine_consensus} ...]]
                         Scenarios to test (default: all)
 ```
 
 ### Cleanup
+
+#### Stopping clients
+```
+testing stop [nodename]
+```
+
+#### Removing client instances
+```
+testing rm [nodename]
+```
+
+#### Removing all instances
 ```
 testing cleanup
 ```
