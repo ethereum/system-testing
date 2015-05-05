@@ -4,6 +4,7 @@ from testing.testing import Inventory
 from testing.clients import start_clients, stop_clients
 from logutils.eshelper import log_scenario, consensus, assert_mining  # , assert_started, assert_connected
 
+max_time_to_reach_consensus = 15
 scenario_run_time_s = 100
 impls = ['go']
 boot = 'bootnode-go-0'
@@ -42,6 +43,21 @@ def run(run_clients):
     log_event('stopping_clients')
     stop_clients(clients=clients, impls=impls)
     log_event('stopping_clients.done')
+
+    # start all clients without mining
+    log_event('start_all_clients_again')
+    start_clients(clients=clients, impls=impls, enable_mining=False)
+    log_event('start_all_clients_again.done')
+
+    # let them agree on a block
+    log_event('wait_for_consensus')
+    time.sleep(max_time_to_reach_consensus)
+    log_event('wait_for_consensus.done')
+
+    # stop all clients
+    log_event('stop_all_clients')
+    stop_clients(clients=clients, impls=impls)
+    log_event('stop_all_clients.done')
 
 @pytest.fixture(scope='module')
 def clients():
