@@ -63,7 +63,7 @@ def clients():
 
 
 def test_started(clients):
-    assert_started(len(clients), offset=scenario_run_time_s + 30)
+    assert_started(len(clients), offset=scenario_run_time_s * 3)
 
 def test_connections(clients):
     assert_connected(minconnected=len(clients), minpeers=len(clients), offset=scenario_run_time_s * 2)
