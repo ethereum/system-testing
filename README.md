@@ -11,6 +11,12 @@ Tests are deployed via `docker-machine` on Amazon EC2 instances.
 
 Add your AWS credentials in your local `~/.boto`, it will get mounted as a single-file volume inside the container.
 
+```
+[Credentials]
+aws_access_key_id = <ACCESS_KEY_ID>
+aws_secret_access_key = <SECRET_ACCESS_KEY>
+```
+
 ##### Running with `docker`:
 ```
 docker run -v ~/.boto:/root/.boto -it ethereum/system-testing
