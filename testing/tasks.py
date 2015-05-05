@@ -8,7 +8,7 @@ import boto.ec2
 import nodeid_tool
 from contextlib import contextmanager
 from fabric.api import settings, lcd, task, local, abort, shell_env
-import futures
+import concurrent.futures as futures
 import ConfigParser
 from os.path import expanduser
 
