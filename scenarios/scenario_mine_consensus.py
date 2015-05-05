@@ -2,8 +2,7 @@ import time
 import pytest
 from testing.testing import Inventory
 from testing.clients import start_clients, stop_clients
-from logutils.eshelper import log_scenario, consensus, assert_started, assert_connected, assert_mining
-
+from logutils.eshelper import log_scenario, consensus, assert_mining  # , assert_started, assert_connected
 
 scenario_run_time_s = 100
 impls = ['go']
@@ -11,7 +10,6 @@ boot = 'bootnode-go-0'
 
 def log_event(event, **kwargs):
     log_scenario(name='mine', event=event, **kwargs)
-
 
 @pytest.fixture(scope='module', autouse=True)
 def run(run_clients):
@@ -45,7 +43,6 @@ def run(run_clients):
     stop_clients(clients=clients, impls=impls)
     log_event('stopping_clients.done')
 
-
 @pytest.fixture(scope='module')
 def clients():
     """py.test passes this fixture to every test function expecting an argument
@@ -54,12 +51,11 @@ def clients():
     inventory = Inventory()
     return inventory.clients
 
+# def test_startup(clients):
+#     assert_started(minstarted=len(clients))
 
-def test_startup(clients):
-    assert_started(minstarted=len(clients))
-
-def test_connections(clients):
-    assert_connected(minconnected=len(clients), minpeers=len(clients))
+# def test_connections(clients):
+#     assert_connected(minconnected=len(clients), minpeers=len(clients))
 
 def test_mining_started(clients):
     assert_mining(minmining=len(clients))

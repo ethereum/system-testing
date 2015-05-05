@@ -198,14 +198,15 @@ def main():
         stop_containers(args.parameters)
         raise SystemExit
     elif args.command == "rm":
-        for nodename in args.parameters:
-            machine("rm %s" % nodename)
+        teardown(args.parameters)
         raise SystemExit
     elif args.command == "cleanup":
-        # Cleanup - TODO per implementation, filters and use futures
+        # Cleanup - TODO per implementation / filters
         inventory = Inventory()
+        nodenames = []
         for nodename, ip in inventory.instances.items():
-            machine("rm %s" % nodename)
+            nodenames.append(nodename)
+        teardown(nodenames)
         raise SystemExit
 
     # Create certs if they don't exist, otherwise we can end up creating
@@ -381,7 +382,7 @@ def main():
     run_scenarios(load_scenarios)
 
     # Teardown
-    if confirm("Teardown running nodes?"):
+    if confirm("Teardown running nodes?", default=False):
         teardown(nodenames)
 
 if __name__ == '__main__':

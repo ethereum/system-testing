@@ -66,12 +66,12 @@ def test_started(clients):
     assert_started(len(clients), offset=scenario_run_time_s + 30)
 
 def test_connections(clients):
-    assert_connected(minconnected=len(clients), minpeers=len(clients), offset=scenario_run_time_s + 30)
+    assert_connected(minconnected=len(clients), minpeers=len(clients), offset=scenario_run_time_s * 2)
 
     guids = [nodeid_tool.topub(ext_id.encode('utf-8')) for ext_id in clients]
     for guid in guids:
         s = Search(client)
-        s = s.filter(F('term', **{'p2p.connected': ''}))
+        s = s.filter('exists', field='json_message.p2p.connected.ts')
         s = s.filter(F('term', guid=guid))
         s = s.filter(F('term', remote_id=guid))
         response = s.execute()

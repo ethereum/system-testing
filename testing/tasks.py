@@ -146,7 +146,7 @@ def run_on(nodename, image, options="", command="", name=None):
     if not env:
         abort("Error getting machine environment")
     with shell_env(DOCKER_TLS_VERIFY=env['tls'], DOCKER_CERT_PATH=env['cert_path'], DOCKER_HOST=env['host']):
-        run(name, image, options, command)
+        docker("run --name %s %s %s %s" % (name, options, image, command))
 
 @task
 def stop_on(nodename, capture=False, rm=True):
@@ -154,7 +154,7 @@ def stop_on(nodename, capture=False, rm=True):
     if not env:
         abort("Error getting machine environment")
     with shell_env(DOCKER_TLS_VERIFY=env['tls'], DOCKER_CERT_PATH=env['cert_path'], DOCKER_HOST=env['host']):
-        stop(nodename, rm=False)
+        docker("stop %s" % nodename)
     if rm:
         with shell_env(DOCKER_TLS_VERIFY=env['tls'], DOCKER_CERT_PATH=env['cert_path'], DOCKER_HOST=env['host']):
             docker("rm %s" % nodename)
@@ -204,10 +204,32 @@ def ssh_on(nodename, command):
     machine("ssh %s -- %s" % (nodename, command))
 
 @task
+def scp_to(nodename, src, dest):
+    env = machine_env(nodename)
+    ip = env['host'][6:-5]
+    local("scp -q -o StrictHostKeyChecking=no "
+          "-i ~/.docker/machine/machines/%s/id_rsa "
+          "%s ubuntu@%s:%s" % (nodename, src, ip, dest))
+
+@task
 def teardown(nodenames):
-    # TODO use futures
-    for nodename in nodenames:
-        machine("rm %s" % nodename)
+    """
+    Remove instances
+    """
+    max_workers = len(nodenames)
+
+    start = time.time()
+    with futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
+        future_node = dict((executor.submit(machine,
+                                            "rm %s" % nodename), nodename)
+                           for nodename in nodenames)
+
+    for future in futures.as_completed(future_node, 30):
+        nodename = future_node[future]
+        if future.exception() is not None:
+            logger.info('%r generated an exception: %s' % (nodename, future.exception()))
+
+    logger.info("Teardown duration: %ss" % (time.time() - start))
 
 @task
 def launch_prepare_nodes(vpc, region, zone, clients=implementations):
@@ -430,14 +452,6 @@ def run_bootnodes(nodes, images):
                 raise ValueError("No implementation: %s" % impl)
 
     run_containers(nodes, images, options, commands)
-
-@task
-def scp_to(nodename, src, dest):
-    env = machine_env(nodename)
-    ip = env['host'][6:-5]
-    local("scp -q -o StrictHostKeyChecking=no "
-          "-i ~/.docker/machine/machines/%s/id_rsa "
-          "%s ubuntu@%s:%s" % (nodename, src, ip, dest))
 
 # TODO per-user nodenames / tags
 @task

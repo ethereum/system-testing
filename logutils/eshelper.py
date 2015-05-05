@@ -25,7 +25,7 @@ def pprint(x):
 def ip_from_guid(guid):
     return guid_lookup_table[guid]['guid_short'] + ' @ ' + guid_lookup_table[guid]['ip'] + '/' + guid_lookup_table[guid]['impl']
 
-def time_range_filter(field="timestamp", offset=60):
+def time_range_filter(field="@timestamp", offset=60):
     start_time = datetime.datetime.utcfromtimestamp(
         time.time() - offset).strftime('%Y-%m-%dT%H:%M:%S.%fZ')
     end_time = datetime.datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%S.%fZ')
@@ -230,10 +230,10 @@ def tx_propagation(offset=10):
 
     """
     s = Search(client)
-    s = s.query(Q("match", message='eth.tx.received'))
-    s = s.filter(time_range_filter(offset=offset))
-    # By default, the buckets are ordered by their doc_count descending
-    s.aggs.bucket('by_tx', 'terms', field='@fields.tx_hash', size=10)
+    # s = s.query(Q("match", message='eth.tx.received'))
+    s = s.filter('exists', field='json_message.eth.tx.received.tx_hash')
+    s = s.filter(time_range_filter(field="json_message.eth.tx.received.ts", offset=offset))
+    s.aggs.bucket('by_tx', 'terms', field='json_message.eth.tx.received.tx_hash', size=10)
     # s = s[0:1000]
     response = s.execute()
     if response:

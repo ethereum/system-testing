@@ -3,13 +3,13 @@ import pytest
 from testing import nodeid_tool
 from testing.testing import Inventory
 from testing.clients import start_clients, stop_clients
+from testing.rpc import coinbase, balance, transact
 from logutils.eshelper import tx_propagation, log_scenario
-from rpc import coinbase, balance, transact
 
-max_time_to_reach_consensus = 10
+max_time_to_reach_consensus = 15
 impls = ['go']
 boot = 'bootnode-go-0'
-stop_clients_at_scenario_end = False
+stop_clients_at_scenario_end = True
 
 def Ox(x):
     return '0x' + x
@@ -35,11 +35,6 @@ def run(run_clients):
     inventory = Inventory()
     clients = list(inventory.clients)
 
-    # stop all clients
-    # log_event('stopping_clients')
-    # stop_clients(clients=clients,impl=impl)
-    # log_event('stopping_clients.done')
-
     log_event('starting_one_client')
     start_clients(clients=clients[:1], impls=impls)
     log_event('starting_one_client.done')
@@ -59,7 +54,7 @@ def run(run_clients):
     sender = clients[0]
     recipient = clients[1]
 
-    rpc_host = inventory.inventory[sender][0]
+    rpc_host = inventory.clients[sender]
     rpc_port = 8545  # hard coded FIXME if we get multiple clients per ec
     endpoint = 'http://%s:%d' % (rpc_host, rpc_port)
 
@@ -72,8 +67,10 @@ def run(run_clients):
     # print balance(endpoint, sending_address)
     # this fails randomly, why ?
     assert value < balance(endpoint, sending_address)
+
     log_event('sending_transaction', sender=sending_address,
               to=receiving_address, value=value)
+
     tx = transact(endpoint, sender=sending_address, to=receiving_address, value=value)
     log_event('sending_transaction.done', result=tx)
 
@@ -94,11 +91,10 @@ def client_count():
     inventory = Inventory()
     return len(inventory.clients)
 
-
 def test_propagation(client_count):
     """Check that all clients have received the transaction."""
     num_agreeing_clients = tx_propagation(offset=max_time_to_reach_consensus * 2)
     # stop_clients(clients=clients, impl=impl)
-    assert num_agreeing_clients == client_count, 'only %d (of %d) clients received a transaction' % (
+    assert num_agreeing_clients >= client_count, 'only %d (of %d) clients received a transaction' % (
         num_agreeing_clients, client_count)
     print 'PASS: all %d clients received a transaction' % client_count

@@ -1,17 +1,13 @@
 import json
 from elasticsearch_dsl import Search
-from elasticsearch_dsl import F as _F
+from elasticsearch_dsl import F
 from elasticsearch import Elasticsearch
 from collections import OrderedDict
 from pyethereum.utils import big_endian_to_int
+# from testing.testing import Inventory
 
-
-def at_kargs(kargs):
-    return dict([(k.replace('at_', '@'), v) for k, v in kargs.items()])
-F = lambda *args, **kargs: _F(*args, **at_kargs(kargs))
-
-#  es_endpoint = '%s:9200' % Inventory().es
-es_endpoint = '52.4.55.33:9200'  # FIXME speedup hack
+# es_endpoint = '%s:9200' % Inventory().es
+es_endpoint = '52.6.211.145:9200'  # FIXME speedup hack
 client = Elasticsearch(es_endpoint)
 
 
@@ -22,20 +18,20 @@ def pprint(x):
 def session_times():
     # {"@fields": {}, "@timestamp": "2015-02-23T17:03:41.738412Z", "@source_host": "newair.brainbot.com", "@message": "scenario.p2p_connect.started"}
 
-    start_message = 'scenario.p2p_connect.starting.clients'
+    start_message = 'scenario.p2p_connect.starting.clients.sequentially'
     stop_message = 'scenario.p2p_connect.stopping.clients'
     s = Search(client)
     s = s.filter('bool',
-                 should=[F('term', at_message=start_message),
-                         F('term', at_message=stop_message)])
-    s = s.fields(['@message', '@timestamp'])
+                 should=[F('term', message=start_message),
+                         F('term', message=stop_message)])
+    s = s.fields(['message', '@timestamp'])
     s = s[0:100000]
     s = s.sort('-@timestamp')  # desc,  we want the latest events
     response = s.execute()
 
     events = []  # joungest to oldest, last should be a stop message
     for h in response:
-        msg = 'start' if h['@message'][0] == start_message else 'stop'
+        msg = 'start' if h['message'][0] == start_message else 'stop'
         ts = h['@timestamp'][0]
         events.append((msg, ts))
     assert not events or events[0][0] == 'stop'
@@ -50,10 +46,10 @@ def session_times():
 def fetch(session):
     s = Search(client)
     s = s.filter('bool',
-                 should=[F('term', at_message='p2p.disconnected'),
-                         F('term', at_message='p2p.connected')])
+                 should=[F('term', message='p2p.disconnected'),
+                         F('term', message='p2p.connected')])
     s = s.filter('range', **{'@timestamp': dict(gte=session['start'], lte=session['stop'])})
-    s = s.fields(['@fields.remote_id', 'guid', '@message', '@timestamp'])
+    s = s.fields(['json_message.p2p.connected.remote_id', 'guid', 'message', '@timestamp'])
     s = s[0:100000]
     # s = s[0:10]
     s = s.sort('@timestamp')
@@ -66,8 +62,8 @@ def analyze(r):
     events = []
     for h in r.hits:
         node = h.guid[0]
-        remote = h['@fields.remote_id'][0]
-        message = h['@message'][0]
+        remote = h['json_message.p2p.connected.remote_id'][0]
+        message = h['message'][0]
         # ts = h['@timestamp'][0]
         # print ts
 
