@@ -195,15 +195,35 @@ def main():
         logger.info("===")
         raise SystemExit
     elif args.command == "stop":
-        stop_containers(args.parameters)
+        nodenames = []
+        if args.parameters:
+            nodenames = args.parameters
+        else:
+            inventory = Inventory()
+            for nodename, ip in inventory.clients.items():
+                nodenames.append(nodename)
+        stop_containers(nodenames)
         raise SystemExit
     elif args.command == "rm":
-        teardown(args.parameters)
+        nodenames = []
+        if args.parameters:
+            nodenames = args.parameters
+        else:
+            inventory = Inventory()
+            for nodename, ip in inventory.clients.items():
+                nodenames.append(nodename)
+        if not confirm("This will terminate %s, continue?" % nodenames, default=False):
+            logger.warn("Aborting...")
+            raise SystemExit
+        teardown(nodenames)
         raise SystemExit
     elif args.command == "cleanup":
         # Cleanup - TODO per implementation / filters
-        inventory = Inventory()
+        if not confirm("This will terminate all instances including ElasticSearch, continue?", default=False):
+            logger.warn("Aborting...")
+            raise SystemExit
         nodenames = []
+        inventory = Inventory()
         for nodename, ip in inventory.instances.items():
             nodenames.append(nodename)
         teardown(nodenames)
