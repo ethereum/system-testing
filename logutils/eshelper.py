@@ -1,13 +1,12 @@
+import time
+import json
+from datetime import datetime
 from elasticsearch import Elasticsearch
 from elasticsearch_dsl import Search
 from elasticsearch_dsl import F, Q
-import time
-import json
-import datetime
 from testing.clients import guid_lookup_table
 from testing.testing import Inventory
 from logstash_formatter import LogstashFormatter
-
 
 # from base import Inventory
 es_endpoint = '%s:9200' % Inventory().es
@@ -15,7 +14,7 @@ es_endpoint = '%s:9200' % Inventory().es
 client = Elasticsearch(es_endpoint)
 
 lsformatter = LogstashFormatter(defaults=dict())
-es_index_name = 'logstash-%s' % datetime.datetime.utcnow().strftime('%Y.%m.%d')
+es_index_name = 'logstash-%s' % datetime.utcnow().strftime('%Y.%m.%d')
 es_doc_type = 'ethlog'
 
 
@@ -26,9 +25,9 @@ def ip_from_guid(guid):
     return guid_lookup_table[guid]['guid_short'] + ' @ ' + guid_lookup_table[guid]['ip'] + '/' + guid_lookup_table[guid]['impl']
 
 def time_range_filter(field="@timestamp", offset=60):
-    start_time = datetime.datetime.utcfromtimestamp(
+    start_time = datetime.utcfromtimestamp(
         time.time() - offset).strftime('%Y-%m-%dT%H:%M:%S.%fZ')
-    end_time = datetime.datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%S.%fZ')
+    end_time = datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%S.%fZ')
     return F('range', **{field: {"gte": start_time, "lte": end_time}})
 
 def log_scenario(name, event, **kargs):
@@ -154,12 +153,13 @@ def consensus2():
     """
 
 
-def assert_mining(minmining):
+def assert_mining(minmining, offset=300):
     """
     assert that at least `minmining` clients have started mining and mined a block
     """
     s = Search(client)
     s = s.filter(F('term', message='eth.miner.new_block'))
+    s = s.filter(time_range_filter(offset=offset))
     s.aggs.bucket('by_host', 'terms', field='syslog_hostname.raw', size=0)
     response = s.execute()
     # pprint(response)
@@ -169,7 +169,7 @@ def assert_mining(minmining):
         print '  %s, blocks mined: %d' % (tag.key, tag.doc_count)  # ip_from_guid(tag.key)
 
     num_mining = len(response.aggregations.by_host.buckets)
-    assert num_mining >= minmining, 'only %d clients mining, expexted at least %d' % (num_mining, minmining)
+    assert num_mining >= minmining, 'only %d clients mining, expected at least %d' % (num_mining, minmining)
 
 
 def messages():

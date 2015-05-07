@@ -3,9 +3,11 @@ Ethereum clients support
 """
 
 from testing import Inventory
-from tasks import run_containers, stop_containers
+from tasks import set_logging, run_containers, stop_containers
 from fabric.api import task
 import nodeid_tool
+
+set_logging(debug=False)
 
 # Docker run options (daemonize, ports, volumes, entrypoint)
 opts = {}

@@ -15,7 +15,7 @@ from glob import glob
 from getpass import getpass
 from fabric.api import settings, abort  # task, env, run, prompt, cd, get, put, runs_once, sudo
 from fabric.contrib.console import confirm  # from fabric.utils import error, puts, fastprint
-from tasks import machine, machine_list, setup_es, launch_nodes, launch_prepare_nodes, stop_containers
+from tasks import set_logging, machine, machine_list, setup_es, launch_nodes, launch_prepare_nodes, stop_containers
 from tasks import prepare_nodes, run_bootnodes, create_accounts, run_scenarios, rollback, teardown
 from argparse import ArgumentParser
 from . import __version__
@@ -119,7 +119,7 @@ def parse_arguments(parser):
     parser.add_argument(
         "parameters",
         nargs='*',
-        help="Optional parameters")
+        help="Optional parameters (Use 'boot' with 'stop' and 'rm' for all bootnodes)")
 
     return parser.parse_args()
 
@@ -172,16 +172,7 @@ def main():
     parser = ArgumentParser(version=__version__)
     args = parse_arguments(parser)
 
-    if args.debug:
-        logging.basicConfig(
-            level=logging.DEBUG,
-            format="[%(asctime)s] %(levelname)s [%(name)s.%(funcName)s:%(lineno)d] %(message)s",
-            datefmt="%H:%M:%S")
-    else:
-        logging.basicConfig(
-            level=logging.INFO,
-            format="%(name)s: %(message)s",
-            datefmt="%H:%M:%S")
+    set_logging(args.debug)
 
     logger.info("=====")
     logger.info("Ethereum system-testing %s", __version__)
@@ -197,20 +188,30 @@ def main():
     elif args.command == "stop":
         nodenames = []
         if args.parameters:
-            nodenames = args.parameters
+            if "boot" in args.parameters:
+                inventory = Inventory()
+                for nodename in inventory.bootnodes:
+                    nodenames.append(nodename)
+            else:
+                nodenames = args.parameters
         else:
             inventory = Inventory()
-            for nodename, ip in inventory.clients.items():
+            for nodename in inventory.clients:
                 nodenames.append(nodename)
         stop_containers(nodenames)
         raise SystemExit
     elif args.command == "rm":
         nodenames = []
         if args.parameters:
-            nodenames = args.parameters
+            if "boot" in args.parameters:
+                inventory = Inventory()
+                for nodename in inventory.bootnodes:
+                    nodenames.append(nodename)
+            else:
+                nodenames = args.parameters
         else:
             inventory = Inventory()
-            for nodename, ip in inventory.clients.items():
+            for nodename in inventory.clients:
                 nodenames.append(nodename)
         if not confirm("This will terminate %s, continue?" % nodenames, default=False):
             logger.warn("Aborting...")
@@ -224,7 +225,7 @@ def main():
             raise SystemExit
         nodenames = []
         inventory = Inventory()
-        for nodename, ip in inventory.instances.items():
+        for nodename in inventory.instances:
             nodenames.append(nodename)
         teardown(nodenames)
         raise SystemExit
@@ -232,10 +233,10 @@ def main():
     # Create certs if they don't exist, otherwise we can end up creating
     # the same file in parallel in preparation steps
     if not os.path.exists(os.path.join(os.path.expanduser("~"), ".docker", "machine", "certs")):
-        logging.info("No certificates found, creating them...")
+        logging.info("No certificates found, creating them...\n")
         machine("create --url tcp://127.0.0.1:2376 dummy")
         machine("rm dummy")
-        logging.info("Certificates created.")
+        logging.info("Certificates created.\n")
 
     # Ask to setup ES node
     es = None
@@ -270,7 +271,7 @@ def main():
     # Confirm setup parameters
     if not confirm("Setting up %s node%s (%s C++, %s Go, %s Python) in %s%s region, "
                    "using %s boot node%s (%s C++, %s Go, %s Python), "
-                   "logging to ElasticSearch node at %s, "
+                   "logging to ElasticSearch node at https://%s, "
                    "running scenarios: %s. Continue?" % (
             total,
             ("s" if total > 1 else ""),
@@ -332,7 +333,10 @@ def main():
 
     # Launch bootnodes
     if (args.cpp_boot or args.go_boot or args.python_boot) and not inventory.bootnodes:
+        logging.info("Launching bootnode instances...")
+
         nodes = {'cpp': [], 'go': [], 'python': []}
+
         for x in xrange(0, args.cpp_boot):
             nodes['cpp'].append("bootnode-cpp-%s" % x)
         for x in xrange(0, args.go_boot):
@@ -345,12 +349,17 @@ def main():
             args.zone,
             ami_ids,
             nodes)
+
+        logging.info("Starting bootnodes...")
         run_bootnodes(nodes, images)
 
     # Launch testnodes
     if (args.cpp_nodes or args.go_nodes or args.python_nodes) and not inventory.clients:
+        logging.info("Launching testnode instances...")
+
         nodes = {'cpp': [], 'go': [], 'python': []}
         nodenames = []
+
         for x in xrange(0, args.cpp_nodes):
             nodes['cpp'].append("testnode-cpp-%s" % x)
         for x in xrange(0, args.go_nodes):
@@ -359,8 +368,8 @@ def main():
             nodes['python'].append("testnode-python-%s" % x)
         nodenames = nodes['cpp'] + nodes['go'] + nodes['python']
 
-        logger.info("Nodes: %s" % nodes)
-        logger.info("Nodenames: %s" % nodenames)
+        logger.debug("Nodes: %s" % nodes)
+        logger.debug("Nodenames: %s" % nodenames)
 
         # Launch test nodes using prepared AMIs from amis.json if it exists
         launch_nodes(
@@ -371,21 +380,23 @@ def main():
             nodes)
 
         # Create geth accounts for Go nodes
+        logging.info("Creating geth accounts...")
         create_accounts(nodes['go'], args.go_image)
 
-    # List machines
-    machines = machine_list()
-    logger.info("Machines:")
-    logger.info(machines)
-    logger.info("===")
-
     # List inventory
-    inventory = Inventory()
-    logger.info('bootnodes: %s' % inventory.bootnodes)
-    logger.info('elasticsearch: %s' % inventory.es)
-    logger.info('clients: %s' % inventory.clients)
-    logger.info('instances: %s' % inventory.instances)
-    # logger.info('roles: %s' % inventory.roles)
+    if args.debug:
+        # List machines
+        machines = machine_list()
+        logger.info("Machines:")
+        logger.info(machines)
+        logger.info("===")
+
+        inventory = Inventory()
+        logger.debug('bootnodes: %s' % inventory.bootnodes)
+        logger.debug('elasticsearch: %s' % inventory.es)
+        logger.debug('clients: %s' % inventory.clients)
+        logger.debug('instances: %s' % inventory.instances)
+        # logger.info('roles: %s' % inventory.roles)
 
     # Load scenarios
     if args.scenarios == 'all':

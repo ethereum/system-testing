@@ -74,7 +74,7 @@ def clients():
 #     assert_connected(minconnected=len(clients), minpeers=len(clients))
 
 def test_mining_started(clients):
-    assert_mining(minmining=len(clients))
+    assert_mining(minmining=len(clients), offset=scenario_run_time_s + 60)
 
 def test_consensus(clients):
     client_count = len(clients)
