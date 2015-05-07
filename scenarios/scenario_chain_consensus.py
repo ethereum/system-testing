@@ -9,6 +9,7 @@ impls = ['go']  # enabled implementations, currently not being used
 test_time = 90
 random.seed(42)
 churn_ratio = 0.75
+min_consensus_ratio = 0.90
 max_time_to_reach_consensus = 15
 state_durations = dict(stopped=(10, 15), running=(20, 30))
 offset = 30  # buffer value, total runtime gets added to this
@@ -115,4 +116,4 @@ def test_consensus(client_count):
     num_agreeing_clients = consensus(offset=offset)
     print '%d out of %d clients are on the same chain' % (num_agreeing_clients,
                                                           client_count)
-    assert num_agreeing_clients == client_count
+    assert num_agreeing_clients >= int(client_count * min_consensus_ratio)

@@ -5,7 +5,9 @@ from testing.clients import start_clients, stop_clients
 from logutils.eshelper import log_scenario, consensus, assert_mining  # , assert_started, assert_connected
 
 impls = ['go']  # enabled implementations, currently not being used
-max_time_to_reach_consensus = 15
+min_mining_ratio = 0.90
+min_consensus_ratio = 0.90
+max_time_to_reach_consensus = 15  # consensus runtime gets added to this
 scenario_run_time_s = 120
 offset = 30  # buffer value, total runtime gets added to this
 
@@ -49,6 +51,9 @@ def run(run_clients):
     start_clients(clients=clients, impls=impls, enable_mining=False)
     log_event('start_all_clients_again.done')
 
+    global max_time_to_reach_consensus
+    consensus_start = time.time()
+
     # let them agree on a block
     log_event('wait_for_consensus')
     time.sleep(max_time_to_reach_consensus)
@@ -61,7 +66,9 @@ def run(run_clients):
 
     global offset
     offset += time.time() - start
+    max_time_to_reach_consensus += time.time() - consensus_start
     print "Total offset: %s" % offset
+    print "Consensus offset: %s" % max_time_to_reach_consensus
 
 @pytest.fixture(scope='module')
 def clients():
@@ -78,11 +85,11 @@ def clients():
 #     assert_connected(minconnected=len(clients), minpeers=len(clients))
 
 def test_mining_started(clients):
-    assert_mining(minmining=len(clients), offset=offset)
+    assert_mining(minmining=int(len(clients) * min_mining_ratio), offset=offset)
 
 def test_consensus(clients):
     client_count = len(clients)
-    num_agreeing_clients = consensus(offset=offset)
+    num_agreeing_clients = consensus(offset=max_time_to_reach_consensus)
     print '%d out of %d clients are on the same chain' % (num_agreeing_clients,
                                                           client_count)
-    assert num_agreeing_clients == client_count
+    assert num_agreeing_clients >= int(client_count * min_consensus_ratio)

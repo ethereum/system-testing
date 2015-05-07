@@ -456,7 +456,7 @@ def run_containers(nodes, images, options, commands):
     for future in futures.as_completed(future_node, 30):
         nodename = future_node[future]
         if future.exception() is not None:
-            logger.info('%r generated an exception: %s' % (nodename, future.exception()))
+            logger.info('%r generated an exception' % nodename)
         completed += 1
         progress.update(completed)
 
@@ -481,7 +481,7 @@ def stop_containers(nodenames):
     for future in futures.as_completed(future_node, 30):
         nodename = future_node[future]
         if future.exception() is not None:
-            logger.info('%r generated an exception: %s' % (nodename, future.exception()))
+            logger.info('%r generated an exception' % nodename)
         completed += 1
         progress.update(completed)
 

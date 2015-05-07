@@ -7,6 +7,7 @@ from testing.rpc import coinbase, balance, transact
 from logutils.eshelper import tx_propagation, log_scenario
 
 impls = ['go']  # enabled implementations, currently not being used
+min_consensus_ratio = 0.90
 max_time_to_reach_consensus = 15
 stop_clients_at_scenario_end = True
 offset = 30  # buffer value, total runtime gets added to this
@@ -100,6 +101,6 @@ def client_count():
 def test_propagation(client_count):
     """Check that all clients have received the transaction."""
     num_agreeing_clients = tx_propagation(offset=offset)
-    assert num_agreeing_clients >= client_count, 'only %d (of %d) clients received a transaction' % (
-        num_agreeing_clients, client_count)
-    print 'PASS: all %d clients received a transaction' % client_count
+    assert num_agreeing_clients >= int(client_count * min_consensus_ratio), (
+        'only %d (of %d) clients received a transaction' % (num_agreeing_clients, client_count))
+    print 'PASS: %d (of %d) clients received a transaction' % (num_agreeing_clients, client_count)
