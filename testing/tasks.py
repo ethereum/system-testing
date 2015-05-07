@@ -9,7 +9,7 @@ import nodeid_tool
 import ConfigParser
 import concurrent.futures as futures
 from os.path import expanduser
-from progressbar import ProgressBar, Percentage, Bar, ETA
+from progressbar import ProgressBar, Percentage, Bar, Timer, ETA
 from contextlib import contextmanager
 from fabric.state import output
 from fabric.api import settings, lcd, task, local, abort, shell_env
@@ -32,7 +32,7 @@ if AWS_ACCESS_KEY is None or AWS_SECRET_KEY is None:
 
 implementations = ["cpp", "go", "python"]
 
-widgets = ['Progress: ', Percentage(), ' ', Bar(marker='#', left='[', right=']'), ' ', ETA()]
+widgets = ['Progress: ', Percentage(), '   ', Timer(), ' ', Bar(marker='#', left='[', right=']'), ' ', ETA()]
 
 def set_logging(debug=False):
     if debug:
@@ -58,7 +58,7 @@ def set_logging(debug=False):
 
 def append_log(line):
     with open("lastrun.log", "a") as logfile:
-        logfile.write(line)
+        logfile.write("%s\n" % line)
 
 @contextmanager
 def rollback(nodenames):
@@ -391,7 +391,7 @@ def launch_nodes(vpc, region, zone, ami_ids, nodes):
     max_workers = len(nodes['cpp'] + nodes['go'] + nodes['python'])
 
     completed = 0
-    progress = ProgressBar(widgets=widgets, maxval=max_workers * 3).start()
+    progress = ProgressBar(widgets=widgets, maxval=max_workers * 10).start()
 
     start = time.time()
     with futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
@@ -409,7 +409,7 @@ def launch_nodes(vpc, region, zone, ami_ids, nodes):
             logger.info('%r generated an exception: %s' % (nodename, future.exception()))
         # else:  # No return value as we're not capturing create()'s output
         #     logger.info('%r returned: %s' % (nodename, future.result()))
-        completed += 2
+        completed += 9
         progress.update(completed)
 
     progress.finish()
@@ -635,7 +635,7 @@ def create_accounts(nodenames, image):
     max_workers = len(nodenames)
 
     completed = 0
-    progress = ProgressBar(widgets=widgets, maxval=max_workers * 3).start()
+    progress = ProgressBar(widgets=widgets, maxval=max_workers * 10).start()
 
     start = time.time()
     with futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
@@ -649,7 +649,7 @@ def create_accounts(nodenames, image):
         nodename = future_node[future]
         if future.exception() is not None:
             logger.info('%r generated an exception: %s' % (nodename, future.exception()))
-        completed += 2
+        completed += 9
         progress.update(completed)
 
     progress.finish()

@@ -47,8 +47,9 @@ cmds['cpp'] = (
     '--upnp off '
     '--public-ip {client_ip} '
     '--remote {bootstrap_ip} '
-    '--peers {req_num_peers} {mining_state} '
-    '--session-secret {privkey}'
+    '--peers {req_num_peers} '
+    '--session-secret {privkey} '
+    '{mining_state}'
 )
 cmds['go'] = (
     '--datadir /opt/data '
@@ -147,8 +148,8 @@ def start_clients(clients=[], impls=[], images=None, req_num_peers=7, boot='boot
                                                     client_ip=clients_config[nodename]['ip'],
                                                     req_num_peers=req_num_peers,
                                                     privkey=clients_config[nodename]['privkey'],
-                                                    mining_state='--force-mining '
-                                                                 '--mining on' if enable_mining else '')
+                                                    mining_state=('--force-mining '
+                                                                  '--mining on' if enable_mining else ''))
             options[nodename] = opts['cpp']
         elif impl == 'python':
             commands[nodename] = cmds['python'].format(bootstrap_public_key=bootnode['pk'],
@@ -168,7 +169,7 @@ def start_clients(clients=[], impls=[], images=None, req_num_peers=7, boot='boot
     run_containers(nodes, images, options, commands)
 
 @task
-def stop_clients(clients=[], impls=[], boot=None):
+def stop_clients(clients=[], impls=[]):
     inventory = Inventory()
     nodenames = []
     if not clients:

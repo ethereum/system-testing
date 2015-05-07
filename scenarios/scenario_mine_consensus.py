@@ -4,10 +4,10 @@ from testing.testing import Inventory
 from testing.clients import start_clients, stop_clients
 from logutils.eshelper import log_scenario, consensus, assert_mining  # , assert_started, assert_connected
 
+impls = ['go']  # enabled implementations, currently not being used
 max_time_to_reach_consensus = 15
-scenario_run_time_s = 100
-impls = ['go']
-boot = 'bootnode-go-0'
+scenario_run_time_s = 120
+offset = 30  # buffer value, total runtime gets added to this
 
 def log_event(event, **kwargs):
     log_scenario(name='mine', event=event, **kwargs)
@@ -31,11 +31,11 @@ def run(run_clients):
     inventory = Inventory()
     clients = inventory.clients
 
-    log_event('starting.clients.sequentially')
-    for client in clients:
-        start_clients(clients=[client], impls=impls, boot=boot, enable_mining=True)
-        time.sleep(1)
-    log_event('starting.clients.sequentially.done')
+    start = time.time()
+
+    log_event('starting.clients')
+    start_clients(clients=clients, impls=impls, enable_mining=True)
+    log_event('starting.clients.done')
 
     print 'let it run for %d secs...' % scenario_run_time_s
     time.sleep(scenario_run_time_s)
@@ -59,6 +59,10 @@ def run(run_clients):
     stop_clients(clients=clients, impls=impls)
     log_event('stop_all_clients.done')
 
+    global offset
+    offset += time.time() - start
+    print "Total offset: %s" % offset
+
 @pytest.fixture(scope='module')
 def clients():
     """py.test passes this fixture to every test function expecting an argument
@@ -74,11 +78,11 @@ def clients():
 #     assert_connected(minconnected=len(clients), minpeers=len(clients))
 
 def test_mining_started(clients):
-    assert_mining(minmining=len(clients), offset=scenario_run_time_s + 60)
+    assert_mining(minmining=len(clients), offset=offset)
 
 def test_consensus(clients):
     client_count = len(clients)
-    num_agreeing_clients = consensus()
+    num_agreeing_clients = consensus(offset=offset)
     print '%d out of %d clients are on the same chain' % (num_agreeing_clients,
                                                           client_count)
     assert num_agreeing_clients == client_count

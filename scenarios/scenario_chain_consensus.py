@@ -5,12 +5,13 @@ from testing.testing import Inventory
 from testing.clients import start_clients, stop_clients
 from logutils.eshelper import consensus, log_scenario  # , assert_connected
 
-state_durations = dict(stopped=(10, 15), running=(20, 30))
+impls = ['go']  # enabled implementations, currently not being used
 test_time = 90
-max_time_to_reach_consensus = 15
 random.seed(42)
-impls = ['go']
-boot = 'bootnode-go-0'
+churn_ratio = 0.75
+max_time_to_reach_consensus = 15
+state_durations = dict(stopped=(10, 15), running=(20, 30))
+offset = 30  # buffer value, total runtime gets added to this
 # num_scheduled_clients = 2
 
 def log_event(event, **kwargs):
@@ -47,9 +48,12 @@ def run(run_clients):
     inventory = Inventory()
     clients = inventory.clients
 
+    start = time.time()
+
     # create schedule
     events = []
-    num_scheduled_clients = len(inventory.clients)
+    num_clients = len(inventory.clients)
+    num_scheduled_clients = int(num_clients * churn_ratio) if num_clients > 4 else num_clients
     for c in list(clients)[:num_scheduled_clients]:
         events.extend(mkschedule(c))
     events = sorted(events, key=lambda x: x['time'])
@@ -94,6 +98,10 @@ def run(run_clients):
     stop_clients(clients=clients, impls=impls)
     log_event('stop_all_clients.done')
 
+    global offset
+    offset += time.time() - start
+    print "Total offset: %s" % offset
+
 @pytest.fixture(scope='module')
 def client_count():
     """py.test passes this fixture to every test function expecting an argument
@@ -104,7 +112,7 @@ def client_count():
 
 def test_consensus(client_count):
     # assert_connected(minconnected=client_count, minpeers=client_count, offset=test_time * 2)
-    num_agreeing_clients = consensus(offset=max_time_to_reach_consensus * 2)
+    num_agreeing_clients = consensus(offset=offset)
     print '%d out of %d clients are on the same chain' % (num_agreeing_clients,
                                                           client_count)
     assert num_agreeing_clients == client_count

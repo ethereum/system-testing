@@ -6,14 +6,12 @@ from testing.testing import Inventory
 from testing.clients import start_clients, stop_clients
 from logutils.eshelper import client, log_scenario, assert_started, assert_connected
 
-# to how many peers should a connection be established
-req_peer = 5
+impls = ['go']  # enabled implementations, currently not being used
+req_peer = 5  # to how many peers should a connection be established
 enable_mining = False
-scenario_run_time_s = 45
-impls = ['go']
-boot = 'bootnode-go-0'
-# if you want to evaluate client logs on the hosts, don't stop the clients
+scenario_run_time = 60
 stop_clients_at_scenario_end = True
+offset = 30  # buffer value, total runtime gets added to this
 
 def log_event(event, **kwargs):
     log_scenario(name='p2p_connect', event=event, **kwargs)
@@ -38,20 +36,23 @@ def run(run_clients):
     inventory = Inventory()
     clients = inventory.clients
 
-    log_event('starting.clients.sequentially')
-    for client_ in clients:
-        start_clients(clients=[client_], req_num_peers=req_peer, impls=impls, boot=boot, enable_mining=enable_mining)
-        time.sleep(1)
-    log_event('starting.clients.sequentially.done')
+    start = time.time()
 
-    print 'let it run for %d secs...' % scenario_run_time_s
-    time.sleep(scenario_run_time_s)
+    log_event('starting.clients')
+    start_clients(clients=clients, req_num_peers=req_peer, impls=impls, enable_mining=enable_mining)
+    log_event('starting.clients.done')
+
+    print 'let it run for %d secs...' % scenario_run_time
+    time.sleep(scenario_run_time)
 
     if stop_clients_at_scenario_end:
         log_event('stopping_clients')
         stop_clients(clients=clients, impls=impls)
         log_event('stopping_clients.done')
 
+    global offset
+    offset += time.time() - start
+    print "Total offset: %s" % offset
 
 @pytest.fixture(scope='module')
 def clients():
@@ -63,15 +64,12 @@ def clients():
 
 
 def test_started(clients):
-    len_clients = len(clients)
-    total_offset = len_clients * 15 + scenario_run_time_s * 3
-    assert_started(len_clients, offset=total_offset)
+    assert_started(len(clients), offset=offset)
 
 def test_connections(clients):
     len_clients = len(clients)
-    total_offset = len_clients * 15 + scenario_run_time_s * 3
     min_peers = len_clients if len_clients <= 3 else 3
-    assert_connected(minconnected=len_clients, minpeers=min_peers, offset=total_offset)
+    assert_connected(minconnected=len_clients, minpeers=min_peers, offset=offset)
 
     guids = [nodeid_tool.topub(ext_id.encode('utf-8')) for ext_id in clients]
     for guid in guids:

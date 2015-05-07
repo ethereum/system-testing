@@ -6,10 +6,10 @@ from testing.clients import start_clients, stop_clients
 from testing.rpc import coinbase, balance, transact
 from logutils.eshelper import tx_propagation, log_scenario
 
+impls = ['go']  # enabled implementations, currently not being used
 max_time_to_reach_consensus = 15
-impls = ['go']
-boot = 'bootnode-go-0'
 stop_clients_at_scenario_end = True
+offset = 30  # buffer value, total runtime gets added to this
 
 def Ox(x):
     return '0x' + x
@@ -34,6 +34,8 @@ def run(run_clients):
 
     inventory = Inventory()
     clients = list(inventory.clients)
+
+    start = time.time()
 
     log_event('starting_one_client')
     start_clients(clients=clients[:1], impls=impls)
@@ -83,6 +85,10 @@ def run(run_clients):
         stop_clients(clients=clients, impls=impls)
         log_event('stopping_clients.done')
 
+    global offset
+    offset += time.time() - start
+    print "Total offset: %s" % offset
+
 @pytest.fixture(scope='module')
 def client_count():
     """py.test passes this fixture to every test function expecting an argument
@@ -93,8 +99,7 @@ def client_count():
 
 def test_propagation(client_count):
     """Check that all clients have received the transaction."""
-    num_agreeing_clients = tx_propagation(offset=max_time_to_reach_consensus * 2)
-    # stop_clients(clients=clients, impl=impl)
+    num_agreeing_clients = tx_propagation(offset=offset)
     assert num_agreeing_clients >= client_count, 'only %d (of %d) clients received a transaction' % (
         num_agreeing_clients, client_count)
     print 'PASS: all %d clients received a transaction' % client_count
