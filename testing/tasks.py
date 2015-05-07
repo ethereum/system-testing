@@ -406,7 +406,9 @@ def launch_nodes(vpc, region, zone, ami_ids, nodes):
     for future in futures.as_completed(future_node, 300):
         nodename = future_node[future]
         if future.exception() is not None:
-            logger.info('%r generated an exception: %s' % (nodename, future.exception()))
+            logger.info('%r generated an exception, removing...')
+            out = machine('rm -f %s' % nodename, capture=True)
+            append_log(out)
         # else:  # No return value as we're not capturing create()'s output
         #     logger.info('%r returned: %s' % (nodename, future.result()))
         completed += 9
