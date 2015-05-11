@@ -12,7 +12,7 @@ churn_ratio = 0.75
 min_consensus_ratio = 0.90
 max_time_to_reach_consensus = 15
 state_durations = dict(stopped=(10, 15), running=(20, 30))
-offset = 30  # buffer value, total runtime gets added to this
+offset = 30  # buffer value, consensus runtime gets added to this
 # num_scheduled_clients = 2
 
 def log_event(event, **kwargs):
@@ -49,8 +49,6 @@ def run(run_clients):
     inventory = Inventory()
     clients = inventory.clients
 
-    start = time.time()
-
     # create schedule
     events = []
     num_clients = len(inventory.clients)
@@ -84,6 +82,13 @@ def run(run_clients):
         cmd(clients=[client], impls=impls)
     log_event('run_churn_schedule.done')
 
+    # stop all clients
+    log_event('stop_all_clients')
+    stop_clients(clients=clients, impls=impls)
+    log_event('stop_all_clients.done')
+
+    start = time.time()
+
     # start all clients without mining
     log_event('start_all_clients_again')
     start_clients(clients=clients, impls=impls, enable_mining=False)
@@ -101,7 +106,7 @@ def run(run_clients):
 
     global offset
     offset += time.time() - start
-    print "Total offset: %s" % offset
+    print "Total offset: %ss" % offset
 
 @pytest.fixture(scope='module')
 def client_count():

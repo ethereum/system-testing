@@ -3,8 +3,9 @@
 Ethereum system-testing
 
     TODO User-defined identifier (suffix) to allow multiple testers per region
+    TODO Adaptive bootnode assignments
     TODO Reduce number of calls to Inventory()
-
+    TODO Use contextmanager to send fabric's output to a logger
     TODO Ask to clean up AMIs? (previous ones just get cleaned up on fresh runs [without amis.json])
     TODO Make a futures wrapper for better pattern reuse (in tasks.py)
 """
@@ -13,10 +14,10 @@ import json
 import logging
 from glob import glob
 from getpass import getpass
-from fabric.api import settings, abort  # task, env, run, prompt, cd, get, put, runs_once, sudo
-from fabric.contrib.console import confirm  # from fabric.utils import error, puts, fastprint
+from fabric.api import settings, abort
+from fabric.contrib.console import confirm
 from tasks import set_logging, machine, machine_list, setup_es, launch_nodes, launch_prepare_nodes, stop_containers
-from tasks import prepare_nodes, run_bootnodes, create_accounts, run_scenarios, rollback, teardown
+from tasks import prepare_nodes, run_bootnodes, create_accounts, run_scenarios, rollback, cleanup_data, teardown
 from argparse import ArgumentParser
 from . import __version__
 
@@ -380,8 +381,13 @@ def main():
             nodes)
 
         # Create geth accounts for Go nodes
+        inventory = Inventory()
+        go_nodes = []
+        for node in nodes['go']:
+            if node in inventory.clients:
+                go_nodes.append(node)
         logging.info("Creating geth accounts...")
-        create_accounts(nodes['go'], args.go_image)
+        create_accounts(go_nodes, args.go_image)
 
     # List inventory
     if args.debug:
@@ -412,7 +418,23 @@ def main():
     # TODO ask to run sequentially or in parallel?
     run_scenarios(load_scenarios)
 
-    # Teardown
+    # Cleanup and teardown
+    nodenames = []
+    inventory = Inventory()
+    for nodename in inventory.clients:
+        nodenames.append(nodename)
+
+    if confirm("Cleanup data folders?", default=False):
+        cleanup_data(nodenames)
+
+        # Recreate geth accounts for Go nodes
+        go_nodes = []
+        for nodename in nodenames:
+            if '-go-' in nodename:
+                go_nodes.append(nodename)
+        logging.info("Recreating geth accounts...")
+        create_accounts(go_nodes, args.go_image)
+
     if confirm("Teardown running nodes?", default=False):
         teardown(nodenames)
 

@@ -10,7 +10,7 @@ impls = ['go']  # enabled implementations, currently not being used
 min_consensus_ratio = 0.90
 max_time_to_reach_consensus = 15
 stop_clients_at_scenario_end = True
-offset = 30  # buffer value, total runtime gets added to this
+offset = 30  # buffer value, consensus runtime gets added to this
 
 def Ox(x):
     return '0x' + x
@@ -35,8 +35,6 @@ def run(run_clients):
 
     inventory = Inventory()
     clients = list(inventory.clients)
-
-    start = time.time()
 
     log_event('starting_one_client')
     start_clients(clients=clients[:1], impls=impls)
@@ -71,9 +69,10 @@ def run(run_clients):
     # this fails randomly, why ?
     assert value < balance(endpoint, sending_address)
 
+    start = time.time()
+
     log_event('sending_transaction', sender=sending_address,
               to=receiving_address, value=value)
-
     tx = transact(endpoint, sender=sending_address, to=receiving_address, value=value)
     log_event('sending_transaction.done', result=tx)
 

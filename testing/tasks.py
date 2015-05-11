@@ -12,9 +12,14 @@ from os.path import expanduser
 from progressbar import ProgressBar, Percentage, Bar, Timer, ETA
 from contextlib import contextmanager
 from fabric.state import output
-from fabric.api import settings, lcd, task, local, abort, shell_env
+from fabric.api import settings, lcd, task, local, abort, shell_env, env
 
 logger = logging.getLogger(__name__)
+
+class FabricException(Exception):
+    pass
+env.abort_exception = FabricException
+# env.warn_only = True
 
 # Load .boto config file
 user_home = expanduser("~")
@@ -33,6 +38,7 @@ if AWS_ACCESS_KEY is None or AWS_SECRET_KEY is None:
 implementations = ["cpp", "go", "python"]
 
 widgets = ['Progress: ', Percentage(), '   ', Timer(), ' ', Bar(marker='#', left='[', right=']'), ' ', ETA()]
+completed = 0
 
 def set_logging(debug=False):
     if debug:
@@ -49,7 +55,11 @@ def set_logging(debug=False):
         # Set Fabric' output level, defaults:
         # {'status': True, 'stdout': True, 'warnings': True, 'running': True,
         #  'user': True, 'stderr': True, 'aborts': True, 'debug': False}
-        output['running'] = False
+        if not debug:
+            output['aborts'] = False
+            output['warnings'] = False
+            output['running'] = False
+            output['status'] = False
 
     eslogger = logging.getLogger('elasticsearch')
     eslogger.setLevel(logging.WARNING)
@@ -57,7 +67,7 @@ def set_logging(debug=False):
     urllogger.setLevel(logging.WARNING)
 
 def append_log(line):
-    with open("lastrun.log", "a") as logfile:
+    with open("debug.log", "a") as logfile:
         logfile.write("%s\n" % line)
 
 @contextmanager
@@ -68,21 +78,9 @@ def rollback(nodenames):
         teardown(nodenames)
         abort("Bad failure...")
 
-def docker(cmd, capture=False):
-    """
-    Run Docker command
-    """
-    return local("docker %s" % cmd, capture=capture)
-
-def machine(cmd, capture=False):
-    """
-    Run Machine command
-    """
-    return local("docker-machine %s" % cmd, capture=capture)
-
 def machine_env(nodename):
-    env = {}
-    env_export = machine("env %s" % nodename, capture=True)
+    env_ = {}
+    env_export = machine("env %s" % nodename)
     exports = env_export.splitlines()
     for export in exports:
         export = export[7:]  # remove "export "...
@@ -98,10 +96,81 @@ def machine_env(nodename):
     if not tls or not cert_path or not host:
         logger.debug(exports)
         return False
-    env['tls'] = tls
-    env['cert_path'] = cert_path
-    env['host'] = host
-    return env
+    env_['tls'] = tls
+    env_['cert_path'] = cert_path
+    env_['host'] = host
+    return env_
+
+def create(vpc, region, zone, nodename, ami=None, securitygroup="docker-machine", capture=True, progress=None):
+    """
+    Launch an AWS instance
+    """
+    try:
+        out = local(("docker-machine create "
+                     "--driver amazonec2 "
+                     "--amazonec2-access-key %s "
+                     "--amazonec2-secret-key %s "
+                     "--amazonec2-vpc-id %s "
+                     "--amazonec2-region %s "
+                     "--amazonec2-zone %s "
+                     "--amazonec2-instance-type %s "
+                     "--amazonec2-root-size 8 "
+                     "--amazonec2-security-group %s "
+                     "%s"
+                     "%s" % (AWS_ACCESS_KEY,
+                             AWS_SECRET_KEY,
+                             vpc,
+                             region,
+                             zone,
+                             "t2.medium",  # TODO evaluate final instance types / permanent ElasticSearch
+                             securitygroup,
+                             ("--amazonec2-ami %s " % ami) if ami else "",
+                             nodename)),
+                    capture=capture)
+        if "Error" in out:
+            append_log('Error creating %s, removing... The error was: %r' % (nodename, out))
+            out = machine('rm -f %s' % nodename)
+            append_log("Removed: %s" % out)
+        else:
+            append_log("Launched %s: %s" % (nodename, out))
+            if progress:
+                global completed
+                completed += 9
+                progress.update(completed)
+    except FabricException as e:
+        append_log('Exception creating %s, removing... The error was: %r' % (nodename, e))
+        out = machine('rm -f %s' % nodename)
+        append_log("Removed: %s" % out)
+
+def docker(cmd, capture=True):
+    """
+    Run Docker command
+    """
+    try:
+        out = local("docker %s" % cmd, capture=capture)
+        return out
+    except FabricException as e:
+        append_log("Exception running docker: %r" % e)
+
+def machine(cmd, capture=True, progress=None):
+    """
+    Run Machine command
+    """
+    try:
+        out = local("docker-machine %s" % cmd, capture=capture)
+        if progress:
+            global completed
+            completed += 1
+            progress.update(completed)
+        return out
+    except FabricException as e:
+        append_log("Exception running docker-machine: %r" % e)
+
+def machine_list():
+    """
+    List machines
+    """
+    return machine("ls", capture=True)
 
 def active(nodename):
     machine("active %s" % nodename)
@@ -113,53 +182,98 @@ def build(folder, tag):
     docker("build -t %s %s" % (tag, folder))
 
 def run(name, image, options, command, capture=True):
-    out = docker("run --name %s %s %s %s" % (name, options, image, command))
-    append_log(out)
+    out = docker("run --name %s %s %s %s" % (name, options, image, command), capture=capture)
+    append_log("Started: %s" % out)
 
 def stop(nodename, rm=True, capture=True):
-    out = docker("stop %s" % nodename)
-    append_log(out)
+    out = docker("stop --time=30 %s" % nodename, capture=capture)
+    append_log("Stopped: %s" % out)
     if rm:
-        out = docker("rm %s" % nodename)
-        append_log(out)
+        out = docker("rm %s" % nodename, capture=capture)
+        append_log("Removed: %s" % out)
 
 def exec_(container, command):
     docker("exec -it %s %s", container, command)
 
-@task
-def machine_list():
-    """
-    List machines
-    """
-    return machine("ls", capture=True)
+def run_on(nodename, image, options="", command="", name=None, progress=None):
+    if name is None:
+        name = nodename
+    env_ = machine_env(nodename)
+    if not env_:
+        abort("Error getting machine environment")
+    with shell_env(DOCKER_TLS_VERIFY=env_['tls'], DOCKER_CERT_PATH=env_['cert_path'], DOCKER_HOST=env_['host']):
+        out = docker("run --name %s %s %s %s" % (name, options, image, command))
+        append_log("Started on %s: %s" % (nodename, out))
+        if progress:
+            global completed
+            completed += 10
+            progress.update(completed)
 
-@task
-def create(vpc, region, zone, nodename, ami=None, securitygroup="docker-machine"):
-    """
-    Launch an AWS instance
-    """
-    out = machine(("create "
-                   "--driver amazonec2 "
-                   "--amazonec2-access-key %s "
-                   "--amazonec2-secret-key %s "
-                   "--amazonec2-vpc-id %s "
-                   "--amazonec2-region %s "
-                   "--amazonec2-zone %s "
-                   "--amazonec2-instance-type %s "
-                   "--amazonec2-root-size 8 "
-                   "--amazonec2-security-group %s "
-                   "%s"
-                   "%s" % (AWS_ACCESS_KEY,
-                           AWS_SECRET_KEY,
-                           vpc,
-                           region,
-                           zone,
-                           "t2.medium",  # TODO evaluate final instance types / permanent ElasticSearch
-                           securitygroup,
-                           ("--amazonec2-ami %s " % ami) if ami else "",
-                           nodename)),
-                  capture=True)
-    append_log(out)
+def stop_on(nodename, capture=True, rm=True, progress=None):
+    env_ = machine_env(nodename)
+    if not env_:
+        abort("Error getting machine environment")
+    with shell_env(DOCKER_TLS_VERIFY=env_['tls'], DOCKER_CERT_PATH=env_['cert_path'], DOCKER_HOST=env_['host']):
+        out = docker("stop --time=30 %s" % nodename, capture=capture)
+        append_log("Stopped on %s: %s" % (nodename, out))
+        if progress:
+            global completed
+            completed += 5
+            progress.update(completed)
+    if rm:
+        with shell_env(DOCKER_TLS_VERIFY=env_['tls'], DOCKER_CERT_PATH=env_['cert_path'], DOCKER_HOST=env_['host']):
+            out = docker("rm -f %s" % nodename, capture=capture)
+            append_log("Removed on %s: %s" % (nodename, out))
+            if progress:
+                global completed
+                completed += 5
+                progress.update(completed)
+
+def docker_on(nodename, command, capture=True):
+    env_ = machine_env(nodename)
+    if not env_:
+        abort("Error getting machine environment")
+    with shell_env(DOCKER_TLS_VERIFY=env_['tls'], DOCKER_CERT_PATH=env_['cert_path'], DOCKER_HOST=env_['host']):
+        return docker(command, capture=capture)
+
+def exec_on(nodename, container, command):
+    env_ = machine_env(nodename)
+    if not env_:
+        abort("Error getting machine environment")
+    with shell_env(DOCKER_TLS_VERIFY=env_['tls'], DOCKER_CERT_PATH=env_['cert_path'], DOCKER_HOST=env_['host']):
+        exec_(container, command)
+
+def pull_on(nodename, image):
+    env_ = machine_env(nodename)
+    if not env_:
+        abort("Error getting machine environment")
+    with shell_env(DOCKER_TLS_VERIFY=env_['tls'], DOCKER_CERT_PATH=env_['cert_path'], DOCKER_HOST=env_['host']):
+        pull(image)
+
+def build_on(nodename, folder, tag):
+    env_ = machine_env(nodename)
+    if not env_:
+        abort("Error getting machine environment")
+    with shell_env(DOCKER_TLS_VERIFY=env_['tls'], DOCKER_CERT_PATH=env_['cert_path'], DOCKER_HOST=env_['host']):
+        build(folder, tag)
+
+def compose_on(nodename, command):
+    env_ = machine_env(nodename)
+    if not env_:
+        abort("Error getting machine environment")
+    with shell_env(DOCKER_TLS_VERIFY=env_['tls'], DOCKER_CERT_PATH=env_['cert_path'], DOCKER_HOST=env_['host']):
+        local("docker-compose %s" % command)
+
+def ssh_on(nodename, command):
+    out = machine("ssh %s -- %s" % (nodename, command))
+    return out
+
+def scp_to(nodename, src, dest):
+    env_ = machine_env(nodename)
+    ip = env_['host'][6:-5]
+    local("scp -q -o StrictHostKeyChecking=no "
+          "-i ~/.docker/machine/machines/%s/id_rsa "
+          "%s ubuntu@%s:%s" % (nodename, src, ip, dest))
 
 @task
 def cleanup(containers):
@@ -168,85 +282,45 @@ def cleanup(containers):
     """
     with settings(warn_only=True):
         for container in containers:
-            docker("stop %s" % container)
+            docker("stop --time=30 %s" % container)
             docker("rm $(docker ps -a -q)")
             docker("rmi $(docker images -f 'dangling=true' -q)")
 
-@task
-def run_on(nodename, image, options="", command="", name=None):
-    if name is None:
-        name = nodename
-    env = machine_env(nodename)
-    if not env:
-        abort("Error getting machine environment")
-    with shell_env(DOCKER_TLS_VERIFY=env['tls'], DOCKER_CERT_PATH=env['cert_path'], DOCKER_HOST=env['host']):
-        out = docker("run --name %s %s %s %s" % (name, options, image, command), capture=True)
-        append_log(out)
+def rm_data(nodename, progress=None):
+    out = ssh_on(nodename, "sudo rm -rf /opt/data/*")
+    if progress:
+        global completed
+        completed += 1
+        progress.update(completed)
+    return out
 
 @task
-def stop_on(nodename, capture=False, rm=True):
-    env = machine_env(nodename)
-    if not env:
-        abort("Error getting machine environment")
-    with shell_env(DOCKER_TLS_VERIFY=env['tls'], DOCKER_CERT_PATH=env['cert_path'], DOCKER_HOST=env['host']):
-        out = docker("stop %s" % nodename, capture=True)
-        append_log(out)
-    if rm:
-        with shell_env(DOCKER_TLS_VERIFY=env['tls'], DOCKER_CERT_PATH=env['cert_path'], DOCKER_HOST=env['host']):
-            out = docker("rm %s" % nodename, capture=True)
-            append_log(out)
+def cleanup_data(nodenames):
+    """
+    Remove instances
+    """
+    max_workers = len(nodenames)
 
-@task
-def docker_on(nodename, command, capture=False):
-    env = machine_env(nodename)
-    if not env:
-        abort("Error getting machine environment")
-    with shell_env(DOCKER_TLS_VERIFY=env['tls'], DOCKER_CERT_PATH=env['cert_path'], DOCKER_HOST=env['host']):
-        return docker(command, capture=capture)
+    global completed
+    completed = 0
+    progress = ProgressBar(widgets=widgets, maxval=max_workers).start()
 
-@task
-def exec_on(nodename, container, command):
-    env = machine_env(nodename)
-    if not env:
-        abort("Error getting machine environment")
-    with shell_env(DOCKER_TLS_VERIFY=env['tls'], DOCKER_CERT_PATH=env['cert_path'], DOCKER_HOST=env['host']):
-        exec_(container, command)
+    start = time.time()
+    with futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
+        future_node = dict((executor.submit(rm_data,
+                                            nodename,
+                                            progress=progress), nodename)
+                           for nodename in nodenames)
 
-@task
-def pull_on(nodename, image):
-    env = machine_env(nodename)
-    if not env:
-        abort("Error getting machine environment")
-    with shell_env(DOCKER_TLS_VERIFY=env['tls'], DOCKER_CERT_PATH=env['cert_path'], DOCKER_HOST=env['host']):
-        pull(image)
+    for future in futures.as_completed(future_node, 30):
+        nodename = future_node[future]
+        if future.exception() is not None:
+            append_log('%r generated an exception' % nodename)
+        if future.result():
+            append_log("Data cleanup: %s" % future.result())
 
-@task
-def build_on(nodename, folder, tag):
-    env = machine_env(nodename)
-    if not env:
-        abort("Error getting machine environment")
-    with shell_env(DOCKER_TLS_VERIFY=env['tls'], DOCKER_CERT_PATH=env['cert_path'], DOCKER_HOST=env['host']):
-        build(folder, tag)
-
-@task
-def compose_on(nodename, command):
-    env = machine_env(nodename)
-    if not env:
-        abort("Error getting machine environment")
-    with shell_env(DOCKER_TLS_VERIFY=env['tls'], DOCKER_CERT_PATH=env['cert_path'], DOCKER_HOST=env['host']):
-        local("docker-compose %s" % command)
-
-@task
-def ssh_on(nodename, command):
-    machine("ssh %s -- %s" % (nodename, command))
-
-@task
-def scp_to(nodename, src, dest):
-    env = machine_env(nodename)
-    ip = env['host'][6:-5]
-    local("scp -q -o StrictHostKeyChecking=no "
-          "-i ~/.docker/machine/machines/%s/id_rsa "
-          "%s ubuntu@%s:%s" % (nodename, src, ip, dest))
+    progress.finish()
+    logger.info("Data cleanup duration: %ss" % (time.time() - start))
 
 @task
 def teardown(nodenames):
@@ -255,21 +329,23 @@ def teardown(nodenames):
     """
     max_workers = len(nodenames)
 
+    global completed
     completed = 0
     progress = ProgressBar(widgets=widgets, maxval=max_workers).start()
 
     start = time.time()
     with futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
         future_node = dict((executor.submit(machine,
-                                            "rm %s" % nodename), nodename)
+                                            "rm %s" % nodename,
+                                            progress=progress), nodename)
                            for nodename in nodenames)
 
     for future in futures.as_completed(future_node, 30):
         nodename = future_node[future]
         if future.exception() is not None:
-            logger.info('%r generated an exception: %s' % (nodename, future.exception()))
-        completed += 1
-        progress.update(completed)
+            append_log('%r generated an exception' % nodename)
+        if future.result():
+            append_log("Teardown: %s" % future.result())
 
     progress.finish()
     logger.info("Teardown duration: %ss" % (time.time() - start))
@@ -290,7 +366,7 @@ def launch_prepare_nodes(vpc, region, zone, clients=implementations):
     for future in futures.as_completed(future_to_client, 300):
         client = future_to_client[future]
         if future.exception() is not None:
-            logger.info('%r generated an exception: %s' % ("Launching prepare-%s" % client, future.exception()))
+            logger.info('%s generated an exception: %r' % ("Launching prepare-%s" % client, future.exception()))
 
     logger.info("Launch prepare duration: %ss" % (time.time() - start))
 
@@ -318,7 +394,7 @@ def prepare_nodes(region, zone, es, clients=implementations, images=None, dag=Fa
     for future in futures.as_completed(future_to_client, 300):
         client = future_to_client[future]
         if future.exception() is not None:
-            logger.info('%r generated an exception: %s' % ("prepare-%s" % client, future.exception()))
+            logger.info('%s generated an exception: %r' % ("prepare-%s" % client, future.exception()))
         else:
             ami_id = future.result()
             logger.info('%r returned: %s' % ("prepare-%s" % client, ami_id))
@@ -390,135 +466,35 @@ def launch_nodes(vpc, region, zone, ami_ids, nodes):
     """
     max_workers = len(nodes['cpp'] + nodes['go'] + nodes['python'])
 
+    global completed
     completed = 0
     progress = ProgressBar(widgets=widgets, maxval=max_workers * 10).start()
 
     start = time.time()
-    with futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
-        future_node = dict((executor.submit(create, vpc, region, zone, nodename, ami=ami_ids['cpp']), nodename)
+    with futures.ThreadPoolExecutor(max_workers=12) as executor:
+        future_node = dict((executor.submit(create, vpc, region, zone, nodename,
+                                            ami=ami_ids['cpp'],
+                                            progress=progress), nodename)
                            for nodename in nodes['cpp'])
-        future_node.update(dict((executor.submit(create, vpc, region, zone, nodename, ami=ami_ids['go']), nodename)
+        future_node.update(dict((executor.submit(create, vpc, region, zone, nodename,
+                                                 ami=ami_ids['go'],
+                                                 progress=progress), nodename)
                            for nodename in nodes['go']))
-        future_node.update(dict((executor.submit(create, vpc, region, zone, nodename, ami=ami_ids['python']), nodename)
+        future_node.update(dict((executor.submit(create, vpc, region, zone, nodename,
+                                                 ami=ami_ids['python'],
+                                                 progress=progress), nodename)
                            for nodename in nodes['python']))
         progress.update(max_workers)
 
     for future in futures.as_completed(future_node, 300):
         nodename = future_node[future]
         if future.exception() is not None:
-            logger.info('%r generated an exception, removing...')
-            out = machine('rm -f %s' % nodename, capture=True)
-            append_log(out)
-        # else:  # No return value as we're not capturing create()'s output
-        #     logger.info('%r returned: %s' % (nodename, future.result()))
-        completed += 9
-        progress.update(completed)
+            append_log('%s generated an exception: %r' % (nodename, future.exception()))
+        if future.result() and "Exception" not in future.result():
+            append_log('Launched %s: %r' % (nodename, future.result()))
 
     progress.finish()
     logger.info("Launch duration: %ss" % (time.time() - start))
-
-@task
-def run_containers(nodes, images, options, commands):
-    """
-    Run client nodes on machines using run_on()
-    """
-    if images is None:
-        images = {}
-        for client in implementations:
-            images[client] = "ethereum/client-%s" % client
-
-    max_workers = len(nodes['cpp'] + nodes['go'] + nodes['python'])
-
-    completed = 0
-    progress = ProgressBar(widgets=widgets, maxval=max_workers).start()
-
-    start = time.time()
-    with futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
-        future_node = dict((executor.submit(run_on,
-                                            nodename,
-                                            images['cpp'],
-                                            options[nodename],
-                                            commands[nodename]), nodename)
-                           for nodename in nodes['cpp'])
-        future_node.update(dict((executor.submit(run_on,
-                                                 nodename,
-                                                 images['go'],
-                                                 options[nodename],
-                                                 commands[nodename]), nodename)
-                           for nodename in nodes['go']))
-        future_node.update(dict((executor.submit(run_on,
-                                                 nodename,
-                                                 images['python'],
-                                                 options[nodename],
-                                                 commands[nodename]), nodename)
-                           for nodename in nodes['python']))
-
-    for future in futures.as_completed(future_node, 30):
-        nodename = future_node[future]
-        if future.exception() is not None:
-            logger.info('%r generated an exception' % nodename)
-        completed += 1
-        progress.update(completed)
-
-    logger.info("Run duration: %ss" % (time.time() - start))
-
-@task
-def stop_containers(nodenames):
-    """
-    Stop client nodes on machines using stop_on()
-    """
-    max_workers = len(nodenames)
-
-    completed = 0
-    progress = ProgressBar(widgets=widgets, maxval=max_workers).start()
-
-    start = time.time()
-    with futures.ThreadPoolExecutor(max_workers=10) as executor:
-        future_node = dict((executor.submit(stop_on,
-                                            nodename), nodename)
-                           for nodename in nodenames)
-
-    for future in futures.as_completed(future_node, 30):
-        nodename = future_node[future]
-        if future.exception() is not None:
-            logger.info('%r generated an exception' % nodename)
-        completed += 1
-        progress.update(completed)
-
-    progress.finish()
-    logger.info("Stop duration: %ss" % (time.time() - start))
-
-@task
-def run_bootnodes(nodes, images):
-    options = dict()
-    commands = dict()
-    for impl in nodes:
-        for nodename in nodes[impl]:
-            env = machine_env(nodename)
-            ip = env['host'][6:-5]
-
-            # Set options (daemonize, ports and entrypoint)
-            if impl == 'cpp':
-                options[nodename] = ('-d -p 30303:30303 -p 30303:30303/udp '
-                                     '--entrypoint eth')
-                commands[nodename] = ('--verbosity 9 --client-name %s '
-                                      '--mining off --mode full --upnp off '
-                                      '--public-ip %s"' % (nodename, ip))
-            elif impl == 'go':
-                options[nodename] = ('-d -p 30303:30303 -p 30303:30303/udp '
-                                     '--entrypoint geth')
-                commands[nodename] = ("--nodekeyhex=%s "
-                                      "--port=30303 "
-                                      "--bootnodes 'enode://%s@10.0.0.0:10000'" % (nodeid_tool.topriv(nodename),
-                                                                                   nodeid_tool.topub(nodename)))
-            elif impl == 'python':
-                options[nodename] = ('-d -p 30303:30303 -p 30303:30303/udp '
-                                     '--entrypoint pyethapp')
-                commands[nodename] = ''
-            else:
-                raise ValueError("No implementation: %s" % impl)
-
-    run_containers(nodes, images, options, commands)
 
 # TODO per-user nodenames / tags
 @task
@@ -530,7 +506,7 @@ def prepare_ami(region, zone, nodename, es, client, image=None, dag=False):
         image = "ethereum/client-%s" % client
 
     # Get our Instance ID
-    inspect = json.loads(machine("inspect %s" % nodename, capture=True))
+    inspect = json.loads(machine("inspect %s" % nodename))
     instance_id = inspect['Driver']['InstanceId']
 
     # Pull base image
@@ -566,13 +542,13 @@ def prepare_ami(region, zone, nodename, es, client, image=None, dag=False):
         # but never returns, so somewhere between futures,
         # Fabric and docker, there's an unhandled timeout
         # while generating DAG caches and getting no output...
-        # We poll for 'Exited' in 'docker ps' and run with
+        # We poll for 'Exited' in 'docker ps -a' and run with
         # -d in generate_dag() for now...
         dag_done = False
         logging.info("Generating DAG on %s..." % nodename)
         while dag_done is False:
             time.sleep(5)
-            ps = docker_on(nodename, "ps -a", capture=True)
+            ps = docker_on(nodename, "ps -a")
             if "Exited" in ps:
                 logging.info("DAG done on %s" % nodename)
                 dag_done = True
@@ -608,13 +584,12 @@ def prepare_ami(region, zone, nodename, es, client, image=None, dag=False):
     else:
         raise ValueError("Created AMI returned non-available state", image.state)
 
-@task
-def account_on(nodename, image):
+def account_on(nodename, image, progress=None):
     """
     Run geth with 'account new' on a node
     """
     # Create password file
-    ssh_on(nodename, "sudo mkdir /opt/data")
+    ssh_on(nodename, "sudo mkdir -p /opt/data")
     ssh_on(nodename, "sudo touch /opt/data/password")
 
     # Create account
@@ -624,10 +599,18 @@ def account_on(nodename, image):
                "--password /opt/data/password "
                "account new")
     run_on(nodename, image, options, command)
+    append_log("Created account on %s: %s" % nodename)
+    if progress:
+        global completed
+        completed += 5
+        progress.update(completed)
 
     # Cleanup container
-    out = docker_on(nodename, "rm %s" % nodename, capture=True)
-    append_log(out)
+    docker_on(nodename, "rm %s" % nodename)
+    if progress:
+        global completed
+        completed += 5
+        progress.update(completed)
 
 @task
 def create_accounts(nodenames, image):
@@ -636,6 +619,7 @@ def create_accounts(nodenames, image):
     """
     max_workers = len(nodenames)
 
+    global completed
     completed = 0
     progress = ProgressBar(widgets=widgets, maxval=max_workers * 10).start()
 
@@ -643,21 +627,18 @@ def create_accounts(nodenames, image):
     with futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
         future_node = dict((executor.submit(account_on,
                                             nodename,
-                                            image), nodename)
+                                            image,
+                                            progress=progress), nodename)
                            for nodename in nodenames)
-        progress.update(max_workers)
 
-    for future in futures.as_completed(future_node, 30):
+    for future in futures.as_completed(future_node, 90):
         nodename = future_node[future]
         if future.exception() is not None:
-            logger.info('%r generated an exception: %s' % (nodename, future.exception()))
-        completed += 9
-        progress.update(completed)
+            append_log('%r generated an exception: %s' % (nodename, future.exception()))
 
     progress.finish()
     logger.info("Create accounts duration: %ss" % (time.time() - start))
 
-@task
 def generate_dag(nodename, client, image):
     """
     Generate DAG on node
@@ -688,9 +669,124 @@ def generate_dag(nodename, client, image):
     run_on(nodename, image, options, command)
 
 @task
+def run_bootnodes(nodes, images):
+    options = dict()
+    commands = dict()
+    for impl in nodes:
+        for nodename in nodes[impl]:
+            env_ = machine_env(nodename)
+            ip = env_['host'][6:-5]
+
+            # Set options (daemonize, ports and entrypoint)
+            if impl == 'cpp':
+                options[nodename] = ('-d -p 30303:30303 -p 30303:30303/udp '
+                                     '--entrypoint eth')
+                commands[nodename] = ('--verbosity 9 '
+                                      '--client-name %s '
+                                      '--mining off '
+                                      '--mode full '
+                                      '--peers 25 '
+                                      '--upnp off '
+                                      '--public-ip %s"' % (nodename, ip))
+            elif impl == 'go':
+                options[nodename] = ('-d -p 30303:30303 -p 30303:30303/udp '
+                                     '--entrypoint geth')
+                commands[nodename] = ("--nodekeyhex=%s "
+                                      "--port=30303 "
+                                      "--maxpeers=25 "
+                                      "--bootnodes 'enode://%s@10.0.0.0:10000'" % (nodeid_tool.topriv(nodename),
+                                                                                   nodeid_tool.topub(nodename)))
+            elif impl == 'python':
+                options[nodename] = ('-d -p 30303:30303 -p 30303:30303/udp '
+                                     '--entrypoint pyethapp')
+                commands[nodename] = ''  # TODO
+            else:
+                raise ValueError("No implementation: %s" % impl)
+
+    run_containers(nodes, images, options, commands)
+
+def run_containers(nodes, images, options, commands):
+    """
+    Run client nodes on machines using run_on()
+    """
+    if images is None:
+        images = {}
+        for client in implementations:
+            images[client] = "ethereum/client-%s" % client
+
+    max_workers = len(nodes['cpp'] + nodes['go'] + nodes['python'])
+
+    global completed
+    completed = 0
+    progress = ProgressBar(widgets=widgets, maxval=max_workers * 10).start()
+
+    start = time.time()
+    with futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
+        future_node = dict((executor.submit(run_on,
+                                            nodename,
+                                            images['cpp'],
+                                            options[nodename],
+                                            commands[nodename],
+                                            progress=progress), nodename)
+                           for nodename in nodes['cpp'])
+        future_node.update(dict((executor.submit(run_on,
+                                                 nodename,
+                                                 images['go'],
+                                                 options[nodename],
+                                                 commands[nodename],
+                                                 progress=progress), nodename)
+                           for nodename in nodes['go']))
+        future_node.update(dict((executor.submit(run_on,
+                                                 nodename,
+                                                 images['python'],
+                                                 options[nodename],
+                                                 commands[nodename],
+                                                 progress=progress), nodename)
+                           for nodename in nodes['python']))
+
+    for future in futures.as_completed(future_node, 90):
+        nodename = future_node[future]
+        if future.exception() is not None:
+            append_log("Exception starting %s: %s" % (nodename, future.exception()))
+        if future.result() and "Exception" not in future.result():
+            append_log("Started: %s" % future.result())
+
+    logger.info("Run duration: %ss" % (time.time() - start))
+
+def stop_containers(nodenames):
+    """
+    Stop client nodes on machines using stop_on()
+    """
+    max_workers = len(nodenames)
+
+    global completed
+    completed = 0
+    progress = ProgressBar(widgets=widgets, maxval=max_workers * 10).start()
+
+    start = time.time()
+    with futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
+        future_node = dict((executor.submit(stop_on,
+                                            nodename,
+                                            progress=progress), nodename)
+                           for nodename in nodenames)
+
+    for future in futures.as_completed(future_node, 30):
+        nodename = future_node[future]
+        if future.exception() is not None:
+            append_log("Exception stopping %s: %s" % (nodename, future.exception()))
+        if future.result() and "Exception" not in future.result():
+            append_log("Stopped: %s" % future.result())
+
+    progress.finish()
+    logger.info("Stop duration: %ss" % (time.time() - start))
+
+@task
 def run_scenarios(scenarios):
     """
     Run test scenarios
     """
-    for scenario in scenarios:
-        local("py.test -vvrs %s" % scenario)
+    try:
+        for scenario in scenarios:
+            local("py.test -vvrs %s" % scenario)
+    except FabricException as e:
+        append_log("Exception running scenarios: %r" % e)

@@ -46,13 +46,13 @@ def run(run_clients):
     stop_clients(clients=clients, impls=impls)
     log_event('stopping_clients.done')
 
+    global max_time_to_reach_consensus
+    consensus_start = time.time()
+
     # start all clients without mining
     log_event('start_all_clients_again')
     start_clients(clients=clients, impls=impls, enable_mining=False)
     log_event('start_all_clients_again.done')
-
-    global max_time_to_reach_consensus
-    consensus_start = time.time()
 
     # let them agree on a block
     log_event('wait_for_consensus')
@@ -67,8 +67,9 @@ def run(run_clients):
     global offset
     offset += time.time() - start
     max_time_to_reach_consensus += time.time() - consensus_start
-    print "Total offset: %s" % offset
-    print "Consensus offset: %s" % max_time_to_reach_consensus
+
+    print "Total offset: %ss" % offset
+    print "Consensus offset: %ss" % max_time_to_reach_consensus
 
 @pytest.fixture(scope='module')
 def clients():

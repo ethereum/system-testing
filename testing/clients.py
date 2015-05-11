@@ -14,7 +14,7 @@ opts = {}
 opts['cpp'] = ('-d '
                '-p 30303:30303 '
                '-p 30303:30303/udp '
-               '-p 8080:8080 '
+               '-p 8545:8545 '
                '-v /opt/data:/opt/data '
                '-v /opt/dag:/root/.ethash '
                '--log-driver syslog '

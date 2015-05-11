@@ -52,7 +52,7 @@ def run(run_clients):
 
     global offset
     offset += time.time() - start
-    print "Total offset: %s" % offset
+    print "Total offset: %ss" % offset
 
 @pytest.fixture(scope='module')
 def clients():

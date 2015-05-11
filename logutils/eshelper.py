@@ -60,7 +60,7 @@ def assert_started(minstarted, offset=90):
 
     num_started = len(response.aggregations.by_host.buckets)
 
-    assert num_started >= minstarted, 'only %d (of %d) clients started' % (num_started, minstarted)
+    assert num_started >= minstarted, 'only %d (of at least %d) clients started' % (num_started, minstarted)
     for tag in response.aggregations.by_host.buckets:
         assert tag.doc_count == 1, 'client %s started more than once' % tag.key  # ip_from_guid(tag.key)
 
@@ -125,25 +125,6 @@ def consensus(offset=60):
     else:
         return 0
 
-
-def assert_consensus(offset=10):
-    """
-    check for 'eth.chain.new_head' messages
-    and return the max number of clients, that had the same head
-    during the last `offset` seconds.
-    """
-    s = Search(client)
-    s = s.query(Q("match", message='eth.chain.new_head'))
-    # s = s.filter(time_range_filter(offset=offset))
-    # By default, the buckets are ordered by their doc_count descending
-    s.aggs.bucket('by_block_hash', 'terms', field='@fields.block_hash', size=0)
-    # s = s[10:10]
-    response = s.execute()
-    pprint(response)
-    if response:
-        return max(tag.doc_count for tag in response.aggregations.by_block_hash.buckets)
-    else:
-        return 0
 
 def consensus2():
     """
