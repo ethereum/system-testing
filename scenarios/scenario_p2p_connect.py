@@ -14,8 +14,7 @@ stop_clients_at_scenario_end = True
 offset = 30  # buffer value, total runtime gets added to this
 
 def log_event(event, **kwargs):
-    log_scenario(name='p2p_connect', event=event, **kwargs)
-
+    log_scenario(name='p2p_connect', event=event, show=True, **kwargs)
 
 @pytest.fixture(scope='module', autouse=True)
 def run(run_clients):
@@ -61,7 +60,6 @@ def clients():
     """
     inventory = Inventory()
     return inventory.clients
-
 
 def test_started(clients):
     assert_started(len(clients), offset=offset)

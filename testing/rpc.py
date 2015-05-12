@@ -4,7 +4,6 @@ def coinbase(endpoint):
     """
      curl -X POST --data '{"jsonrpc":"2.0","method":"eth_coinbase","params":[],"id":1}' http://54.67.35.229:20000
      """
-    print 'querying endpoit: ' + endpoint
     c = pyjsonrpc.HttpClient(endpoint)
     r = c.call('eth_coinbase')
     return r

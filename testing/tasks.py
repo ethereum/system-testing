@@ -210,6 +210,7 @@ def run_on(nodename, image, options="", command="", name=None, progress=None):
             progress.update(completed)
 
 def stop_on(nodename, capture=True, rm=True, progress=None):
+    global completed
     env_ = machine_env(nodename)
     if not env_:
         abort("Error getting machine environment")
@@ -217,7 +218,6 @@ def stop_on(nodename, capture=True, rm=True, progress=None):
         out = docker("stop --time=30 %s" % nodename, capture=capture)
         append_log("Stopped on %s: %s" % (nodename, out))
         if progress:
-            global completed
             completed += 5
             progress.update(completed)
     if rm:
@@ -225,7 +225,6 @@ def stop_on(nodename, capture=True, rm=True, progress=None):
             out = docker("rm -f %s" % nodename, capture=capture)
             append_log("Removed on %s: %s" % (nodename, out))
             if progress:
-                global completed
                 completed += 5
                 progress.update(completed)
 
@@ -357,11 +356,17 @@ def launch_prepare_nodes(vpc, region, zone, clients=implementations):
     """
     max_workers = len(clients)
 
+    global completed
+    completed = 0
+    progress = ProgressBar(widgets=widgets, maxval=max_workers * 10).start()
+
     # Launch prepare nodes
     start = time.time()
     with futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
-        future_to_client = dict((executor.submit(create, vpc, region, zone, "prepare-%s" % client), client)
+        future_to_client = dict((executor.submit(create, vpc, region, zone, "prepare-%s" % client,
+                                                 progress=progress), client)
                                 for client in clients)
+        progress.update(max_workers)
 
     for future in futures.as_completed(future_to_client, 300):
         client = future_to_client[future]
@@ -378,6 +383,10 @@ def prepare_nodes(region, zone, es, clients=implementations, images=None, dag=Fa
     max_workers = len(clients)
     ami_ids = {}
 
+    global completed
+    completed = 0
+    progress = ProgressBar(widgets=widgets, maxval=max_workers * 100).start()
+
     # Run preparation tasks, extending base client images and creating new AMIs
     start = time.time()
     with futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
@@ -388,10 +397,11 @@ def prepare_nodes(region, zone, es, clients=implementations, images=None, dag=Fa
                                                  es,
                                                  client,
                                                  image=images[client] if images else None,
-                                                 dag=dag), client)
+                                                 dag=dag,
+                                                 progress=progress), client)
                                 for client in clients)
 
-    for future in futures.as_completed(future_to_client, 300):
+    for future in futures.as_completed(future_to_client, 1200):
         client = future_to_client[future]
         if future.exception() is not None:
             logger.info('%s generated an exception: %r' % ("prepare-%s" % client, future.exception()))
@@ -404,6 +414,7 @@ def prepare_nodes(region, zone, es, clients=implementations, images=None, dag=Fa
     with open('amis.json', 'w') as f:
         json.dump(ami_ids, f)
 
+    progress.finish()
     logger.info("Prepare duration: %ss" % (time.time() - start))
 
     return ami_ids
@@ -413,34 +424,44 @@ def setup_es(vpc, region, zone, user, passwd):
     # TODO per-user naming
     nodename = "elasticsearch"
 
+    global completed
+    completed = 0
+    progress = ProgressBar(widgets=widgets, maxval=100).start()
+
     with settings(warn_only=False):
         with rollback([nodename]):
             # Launch ES node
-            create(vpc, region, zone, nodename, securitygroup="elasticsearch")
+            create(vpc, region, zone, nodename, securitygroup="elasticsearch", progress=progress)
 
             # Generate certificate and key for logstash-forwarder
             local("openssl req -x509 -batch -nodes -newkey rsa:2048 "
                   "-keyout elk-compose/logstash/conf/logstash-forwarder.key "
                   "-out elk-compose/logstash/conf/logstash-forwarder.crt "
                   "-subj /CN=logs.ethdev.com")
+            progress.update(15)
 
             # Copy to logstash-forwarder's Dockerfile folder
             local("cp elk-compose/logstash/conf/logstash-forwarder.crt logstash-forwarder/")
             local("cp elk-compose/logstash/conf/logstash-forwarder.key logstash-forwarder/")
+            progress.update(25)
 
             # Install htpasswd
             local("sudo apt-get install -q -y apache2-utils")
+            progress.update(35)
 
             # Create htpasswd
             local("htpasswd -cb elk-compose/nginx/conf/htpasswd %s %s" % (user, passwd))
+            progress.update(45)
 
             # Build ELK stack
             with lcd('elk-compose'):
                 compose_on(nodename, "build")
+            progress.update(75)
 
             # Run ELK stack
             with lcd('elk-compose'):
                 compose_on(nodename, "up -d")
+            progress.update(80)
 
     # Get our node IP
     es = {}
@@ -452,10 +473,14 @@ def setup_es(vpc, region, zone, user, passwd):
             es['ip'] = ip
     if not es:
         abort("Could not find our ElasticSearch node, aborting...")
+    progress.update(90)
 
     # Save our ES node IP
     with open('es.json', 'w') as f:
         json.dump(es, f)
+
+    progress.update(100)
+    progress.finish()
 
     return es['ip']
 
@@ -498,19 +523,30 @@ def launch_nodes(vpc, region, zone, ami_ids, nodes):
 
 # TODO per-user nodenames / tags
 @task
-def prepare_ami(region, zone, nodename, es, client, image=None, dag=False):
+def prepare_ami(region, zone, nodename, es, client, image=None, dag=False, progress=None):
     """
     Prepare client AMI
     """
     if image is None:
         image = "ethereum/client-%s" % client
 
+    global completed
+    if progress:
+        completed += 5
+        progress.update(completed)
+
     # Get our Instance ID
     inspect = json.loads(machine("inspect %s" % nodename))
     instance_id = inspect['Driver']['InstanceId']
+    if progress:
+        completed += 5
+        progress.update(completed)
 
     # Pull base image
     pull_on(nodename, image)
+    if progress:
+        completed += 10
+        progress.update(completed)
 
     # Create docker container w/ logstash-forwarder
     # Build logstash-forwarder directly, docker-compose doesn't seem to
@@ -518,6 +554,9 @@ def prepare_ami(region, zone, nodename, es, client, image=None, dag=False):
     # with lcd('logstash-forwarder'):
     #     compose_on(nodename, "build")
     build_on(nodename, "logstash-forwarder", "forwarder")
+    if progress:
+        completed += 20
+        progress.update(completed)
 
     # Run logstash-forwarder, using run_on so we can pass --add-host
     # with lcd('logstash-forwarder'):
@@ -530,6 +569,9 @@ def prepare_ami(region, zone, nodename, es, client, image=None, dag=False):
          "--add-host logs.ethdev.com:%s "
          "--restart always" % es),
         name="forwarder")
+    if progress:
+        completed += 5
+        progress.update(completed)
 
     # Generate DAG
     if client == 'cpp':
@@ -552,9 +594,15 @@ def prepare_ami(region, zone, nodename, es, client, image=None, dag=False):
             if "Exited" in ps:
                 logging.info("DAG done on %s" % nodename)
                 dag_done = True
+    if progress:
+        completed += 20
+        progress.update(completed)
 
     # Stop the instance
     machine("stop %s" % nodename)
+    if progress:
+        completed += 5
+        progress.update(completed)
 
     # Create EC2 connection with boto
     ec2 = boto.ec2.connect_to_region(region)
@@ -563,7 +611,7 @@ def prepare_ami(region, zone, nodename, es, client, image=None, dag=False):
     images = ec2.get_all_images(filters={'tag:Name': "prepared-%s" % client})
     for image in images:
         image.deregister(delete_snapshot=True)
-        logger.info("Deleted AMI " + image.id)
+        logger.info("Deleted AMI %s" % image.id)
 
     # Create new AMI
     ami_id = ec2.create_image(instance_id, "prepared-%s" % client, description="Prepared %s AMI" % client)
@@ -571,6 +619,9 @@ def prepare_ami(region, zone, nodename, es, client, image=None, dag=False):
     # Tag new AMI
     image = ec2.get_all_images(image_ids=ami_id)[0]
     image.add_tag("Name", "prepared-%s" % client)
+    if progress:
+        completed += 10
+        progress.update(completed)
 
     # Wait until the image is ready
     logger.info("Waiting for AMI to be available")
@@ -599,16 +650,16 @@ def account_on(nodename, image, progress=None):
                "--password /opt/data/password "
                "account new")
     run_on(nodename, image, options, command)
-    append_log("Created account on %s: %s" % nodename)
+    append_log("Created account on %s" % nodename)
+
+    global completed
     if progress:
-        global completed
         completed += 5
         progress.update(completed)
 
     # Cleanup container
     docker_on(nodename, "rm %s" % nodename)
     if progress:
-        global completed
         completed += 5
         progress.update(completed)
 

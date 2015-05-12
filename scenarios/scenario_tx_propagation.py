@@ -12,12 +12,8 @@ max_time_to_reach_consensus = 15
 stop_clients_at_scenario_end = True
 offset = 30  # buffer value, consensus runtime gets added to this
 
-def Ox(x):
-    return '0x' + x
-
-def log_event(event, **kwargs):
-    log_scenario(name='tx_propagation', event=event, **kwargs)
-
+def log_event(event, show=True, **kwargs):
+    log_scenario(name='tx_propagation', event=event, show=show, **kwargs)
 
 @pytest.fixture(scope='module', autouse=True)
 def run(run_clients):
@@ -60,7 +56,7 @@ def run(run_clients):
     endpoint = 'http://%s:%d' % (rpc_host, rpc_port)
 
     sending_address = coinbase(endpoint)
-    receiving_address = Ox(nodeid_tool.coinbase(str(recipient)))
+    receiving_address = "0x%s" % nodeid_tool.coinbase(str(recipient))
 
     print 'sending addr %s, receiving addr %s' % (sending_address, receiving_address)
 
@@ -71,10 +67,10 @@ def run(run_clients):
 
     start = time.time()
 
-    log_event('sending_transaction', sender=sending_address,
+    log_event('sending_transaction', show=False, sender=sending_address,
               to=receiving_address, value=value)
     tx = transact(endpoint, sender=sending_address, to=receiving_address, value=value)
-    log_event('sending_transaction.done', result=tx)
+    log_event('sending_transaction.done', show=False, result=tx)
 
     log_event('waiting', delay=max_time_to_reach_consensus)
     time.sleep(max_time_to_reach_consensus)
@@ -99,7 +95,7 @@ def client_count():
 
 def test_propagation(client_count):
     """Check that all clients have received the transaction."""
-    num_agreeing_clients = tx_propagation(offset=offset)
+    num_agreeing_clients = tx_propagation(client_count, offset=offset)
     assert num_agreeing_clients >= int(client_count * min_consensus_ratio), (
         'only %d (of %d) clients received a transaction' % (num_agreeing_clients, client_count))
     print 'PASS: %d (of %d) clients received a transaction' % (num_agreeing_clients, client_count)

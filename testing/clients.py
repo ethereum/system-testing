@@ -56,7 +56,7 @@ cmds['go'] = (
     '--rpc '
     '--rpcaddr=0.0.0.0 '
     '--logjson "-" '
-    '--loglevel "5" '
+    '--verbosity "5" '
     '--bootnodes=enode://{bootstrap_public_key}@{bootstrap_ip}:30303 '
     '--maxpeers={req_num_peers} '
     '--nodekeyhex={privkey} '

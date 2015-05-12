@@ -179,6 +179,8 @@ def main():
     logger.info("Ethereum system-testing %s", __version__)
     logger.info("=====\n")
 
+    inventory = Inventory()
+
     if args.command == "ls":
         # List machines
         machines = machine_list()
@@ -190,13 +192,11 @@ def main():
         nodenames = []
         if args.parameters:
             if "boot" in args.parameters:
-                inventory = Inventory()
                 for nodename in inventory.bootnodes:
                     nodenames.append(nodename)
             else:
                 nodenames = args.parameters
         else:
-            inventory = Inventory()
             for nodename in inventory.clients:
                 nodenames.append(nodename)
         stop_containers(nodenames)
@@ -205,13 +205,11 @@ def main():
         nodenames = []
         if args.parameters:
             if "boot" in args.parameters:
-                inventory = Inventory()
                 for nodename in inventory.bootnodes:
                     nodenames.append(nodename)
             else:
                 nodenames = args.parameters
         else:
-            inventory = Inventory()
             for nodename in inventory.clients:
                 nodenames.append(nodename)
         if not confirm("This will terminate %s, continue?" % nodenames, default=False):
@@ -225,7 +223,6 @@ def main():
             logger.warn("Aborting...")
             raise SystemExit
         nodenames = []
-        inventory = Inventory()
         for nodename in inventory.instances:
             nodenames.append(nodename)
         teardown(nodenames)
@@ -269,11 +266,22 @@ def main():
     total = args.cpp_nodes + args.go_nodes + args.python_nodes
     boot_total = args.cpp_boot + args.go_boot + args.python_boot
 
+    # Determine if we need to prepare AMIs
+    prepare_amis = False
+    try:
+        with open('amis.json', 'r') as f:
+            ami_ids = json.load(f)
+    except:
+        prepare_amis = True
+
     # Confirm setup parameters
-    if not confirm("Setting up %s node%s (%s C++, %s Go, %s Python) in %s%s region, "
+    set_launch_or_run = "Setting up" if prepare_amis else (
+                        "Launching" if not inventory.clients else "Running on")
+    if not confirm("%s %s node%s (%s C++, %s Go, %s Python) in %s%s region, "
                    "using %s boot node%s (%s C++, %s Go, %s Python), "
                    "logging to ElasticSearch node at https://%s, "
-                   "running scenarios: %s. Continue?" % (
+                   "testing scenarios: %s. Continue?" % (
+            set_launch_or_run,
             total,
             ("s" if total > 1 else ""),
             args.cpp_nodes,
@@ -300,10 +308,7 @@ def main():
 
     # TODO Compare inventory to see how many nodes need to be prepared
     # Prepare nodes, creates new AMIs / stores IDs to file for reuse
-    try:
-        with open('amis.json', 'r') as f:
-            ami_ids = json.load(f)
-    except:
+    if prepare_amis:
         # TODO per-user nodenames / tags
         clients = []
         nodenames = []
@@ -322,8 +327,10 @@ def main():
             dag = True
 
         with settings(warn_only=False), rollback(nodenames):
+            logging.info("Launching prepare nodes...")
             launch_prepare_nodes(args.vpc, args.region, args.zone, clients)
         with settings(warn_only=False), rollback(nodenames):
+            logging.info("Preparing AMIs...")
             ami_ids = prepare_nodes(args.region, args.zone, es, clients=clients, images=images, dag=dag)
 
         # Teardown prepare nodes

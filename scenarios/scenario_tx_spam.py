@@ -10,23 +10,65 @@ from logutils.eshelper import tx_propagation, log_scenario
 
 impls = ['go']  # enabled implementations, currently not being used
 min_consensus_ratio = 0.90
-txs_per_client = 100
-max_time_to_reach_consensus = 15
+mined_blocks_target = 5
+txs_per_client = 12
+max_time_to_reach_consensus = 30
 stop_clients_at_scenario_end = True
 offset = 30  # buffer value, consensus runtime gets added to this
 
-def Ox(x):
-    return '0x' + x
+# globals
+successful = 0
+total_txs_tried = 0
 
-def log_event(event, **kwargs):
-    log_scenario(name='tx_propagation', event=event, **kwargs)
+def log_event(event, show=True, **kwargs):
+    log_scenario(name='tx_spam', event=event, show=show, **kwargs)
+
+def client_tx(client, clients, inventory):
+    len_clients = len(clients)
+
+    sender = client
+    recipient_delta = random.randint(0, len_clients - 1)
+
+    # Find our own key
+    key = 0
+    for i, client_ in enumerate(clients):
+        if client_ == client:
+            key = i
+
+    if recipient_delta == key:  # choose neighbor if randint chose itself
+        recipient_delta += 1
+    recipient = clients[recipient_delta]
+
+    rpc_host = inventory.clients[sender]
+    rpc_port = 8545  # hard coded FIXME if we get multiple clients per ec
+    endpoint = 'http://%s:%d' % (rpc_host, rpc_port)
+
+    sending_address = coinbase(endpoint)
+    receiving_address = "0x%s" % nodeid_tool.coinbase(str(recipient))
+
+    # print 'sending addr %s, receiving addr %s' % (sending_address, receiving_address)
+
+    value = 100
+    balance_ = balance(endpoint, sending_address)
+
+    global successful
+    global total_txs_tried
+    for tx in xrange(1, txs_per_client):
+        if value < balance_:
+            total_txs_tried += 1
+            balance_ -= value
+            result = send_tx(endpoint, sending_address, receiving_address, value)
+            if result:
+                successful += 1
+            # txs.append(tx)
+            time.sleep(1)
 
 def send_tx(endpoint, sending_address, receiving_address, value):
-    log_event('sending_transaction', sender=sending_address,
+    log_event('sending_transaction', show=False, sender=sending_address,
               to=receiving_address, value=value)
     tx = transact(endpoint, sender=sending_address,
                   to=receiving_address, value=value)
-    log_event('sending_transaction.done', result=tx)
+    log_event('sending_transaction.done', show=False, result=tx)
 
     return tx
 
@@ -48,6 +90,7 @@ def run(run_clients):
     inventory = Inventory()
     clients = list(inventory.clients)
     len_clients = len(clients)
+    total_txs = txs_per_client * len_clients
 
     log_event('starting.clients')
     start_clients(clients=clients, impls=impls)
@@ -58,56 +101,28 @@ def run(run_clients):
     # to be mined on a single client. In this case we assume we're launching a
     # lot of them so we just try to let as many of them as possible mine a few
     # blocks
-    delay = blocktime * len_clients * 3
+    delay = blocktime * len_clients * mined_blocks_target
     print 'mining for %ss' % delay
     log_event('waiting', delay=delay)
     time.sleep(delay)
 
     start = time.time()
 
-    # create txs
-    for i, client in enumerate(clients):
-        sender = client
-        recipient_delta = random.randint(0, len_clients - 1)
-        if recipient_delta == i:  # choose neighbor if randint chose itself
-            recipient_delta += 1
-        recipient = clients[recipient_delta]
+    # Client futures with tx loop
+    with futures.ThreadPoolExecutor(max_workers=len_clients) as executor:
+        future_to_client = dict((executor.submit(client_tx,
+                                                 client,
+                                                 clients,
+                                                 inventory), client)
+                                for client in clients)
 
-        rpc_host = inventory.clients[sender]
-        rpc_port = 8545  # hard coded FIXME if we get multiple clients per ec
-        endpoint = 'http://%s:%d' % (rpc_host, rpc_port)
+    for future in futures.as_completed(future_to_client, 300):
+        client = future_to_client[future]
+        if future.exception() is not None:
+            print '%s generated an exception: %r' % (client, future.exception())
 
-        sending_address = coinbase(endpoint)
-        receiving_address = Ox(nodeid_tool.coinbase(str(recipient)))
-
-        # print 'sending addr %s, receiving addr %s' % (sending_address, receiving_address)
-
-        value = 100
-        # print balance(endpoint, sending_address)
-        # this fails randomly, why ?
-        balance_ = balance(endpoint, sending_address)
-
-        txs = []
-        for tx in xrange(1, txs_per_client):
-            if value < balance_:
-                balance_ -= value
-                txs.append(tx)
-
-        with futures.ThreadPoolExecutor(max_workers=txs_per_client) as executor:
-            future_to_tx = dict((executor.submit(send_tx,
-                                                 endpoint,
-                                                 sending_address,
-                                                 receiving_address,
-                                                 value), tx)
-                                for tx in txs)
-
-        for future in futures.as_completed(future_to_tx, 300):
-            tx = future_to_tx[future]
-            if future.exception() is not None:
-                print '%s generated an exception for tx #%s: %r' % (sender, tx, future.exception())
-            # else:
-            #     tx_result = future.result()
-            #     print '%s #%s result: %s' % (sender, tx, tx_result['result'])
+    global successful
+    log_event('txs_result', successful=successful, total_txs_tried=total_txs_tried, max_total_txs=total_txs)
 
     log_event('waiting', delay=max_time_to_reach_consensus)
     time.sleep(max_time_to_reach_consensus)
@@ -131,8 +146,8 @@ def client_count():
     return len(inventory.clients)
 
 def test_propagation(client_count):
-    """Check that all clients have received the transaction."""
-    num_agreeing_clients = tx_propagation(offset=offset)
+    """Check that all clients have received transactions."""
+    num_agreeing_clients = tx_propagation(client_count, offset=offset)
     assert num_agreeing_clients >= int(client_count * min_consensus_ratio), (
         'only %d (of %d) clients received a transaction' % (num_agreeing_clients, client_count))
     print 'PASS: %d (of %d) clients received a transaction' % (num_agreeing_clients, client_count)

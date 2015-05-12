@@ -8,11 +8,11 @@ impls = ['go']  # enabled implementations, currently not being used
 min_mining_ratio = 0.90
 min_consensus_ratio = 0.90
 max_time_to_reach_consensus = 15  # consensus runtime gets added to this
-scenario_run_time_s = 120
+scenario_run_time_s = 300
 offset = 30  # buffer value, total runtime gets added to this
 
 def log_event(event, **kwargs):
-    log_scenario(name='mine', event=event, **kwargs)
+    log_scenario(name='mine', event=event, show=True, **kwargs)
 
 @pytest.fixture(scope='module', autouse=True)
 def run(run_clients):

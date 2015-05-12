@@ -17,7 +17,6 @@ lsformatter = LogstashFormatter(defaults=dict())
 es_index_name = 'logstash-%s' % datetime.utcnow().strftime('%Y.%m.%d')
 es_doc_type = 'ethlog'
 
-
 def pprint(x):
     print json.dumps(x.to_dict(), indent=2)
 
@@ -30,10 +29,11 @@ def time_range_filter(field="@timestamp", offset=60):
     end_time = datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%S.%fZ')
     return F('range', **{field: {"gte": start_time, "lte": end_time}})
 
-def log_scenario(name, event, **kargs):
+def log_scenario(name, event, show=False, **kargs):
     doc = dict(event='scenario.%s.%s' % (name, event))
     doc.update(kargs)
-    print doc['event'], repr(kargs) if kargs else ''
+    if show:
+        print doc['event'], repr(kargs) if kargs else ''
     doc = lsformatter.format(doc)
     client.create(index=es_index_name, doc_type=es_doc_type, body=doc)
 
@@ -125,14 +125,12 @@ def consensus(offset=60):
     else:
         return 0
 
-
 def consensus2():
     """
     measure block propagation time (including adding to the chain)
         median
         max
     """
-
 
 def assert_mining(minmining, offset=300):
     """
@@ -152,7 +150,6 @@ def assert_mining(minmining, offset=300):
     num_mining = len(response.aggregations.by_host.buckets)
     assert num_mining >= minmining, 'only %d clients mining, expected at least %d' % (num_mining, minmining)
 
-
 def messages():
     s = Search(client)
     s = s.filter(time_range_filter(offset=6000))
@@ -162,7 +159,6 @@ def messages():
     for tag in response.aggregations.by_message.buckets:
         print(tag.key, tag.doc_count)
     return response
-
 
 def network():
     """
@@ -185,13 +181,11 @@ def network():
         print hit
     return response
 
-
 def tx_list(offset=10):
     """
     check for 'eth.tx.tx_new' messages
     and return the max number of clients, that had the same tx
     during the last `offset` seconds.
-
     """
     s = Search(client)
     s = s.query(Q("match", message='eth.tx.received'))
@@ -202,19 +196,17 @@ def tx_list(offset=10):
         print hit.to_dict()
     return response
 
-
-def tx_propagation(offset=10):
+def tx_propagation(client_count, offset=10):
     """
     check for 'eth.tx.tx_new' messages
     and return the max number of clients, that had the same tx
     during the last `offset` seconds.
-
     """
     s = Search(client)
     # s = s.query(Q("match", message='eth.tx.received'))
     s = s.filter('exists', field='json_message.eth.tx.received.tx_hash')
     s = s.filter(time_range_filter(field="json_message.eth.tx.received.ts", offset=offset))
-    s.aggs.bucket('by_tx', 'terms', field='json_message.eth.tx.received.tx_hash', size=10)
+    s.aggs.bucket('by_tx', 'terms', field='json_message.eth.tx.received.tx_hash', size=client_count)
     # s = s[0:1000]
     response = s.execute()
     if response:

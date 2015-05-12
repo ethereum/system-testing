@@ -16,7 +16,7 @@ offset = 30  # buffer value, consensus runtime gets added to this
 # num_scheduled_clients = 2
 
 def log_event(event, **kwargs):
-    log_scenario(name='chain_consensus', event=event, **kwargs)
+    log_scenario(name='chain_consensus', event=event, show=True, **kwargs)
 
 def mkschedule(client):
     state = 'running'
