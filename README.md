@@ -5,6 +5,8 @@ Testing ethereum clients in dedicated networks. More info in the [wiki](https://
 
 Tests are deployed via `docker-machine` on Amazon EC2 instances.
 
+[![asciicast](https://asciinema.org/a/417uw12uj3ziedzt4y7cjpyoz.png)](https://asciinema.org/a/417uw12uj3ziedzt4y7cjpyoz)
+
 ### Installing necessary software
 
 #### Using Docker
