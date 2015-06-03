@@ -1,4 +1,4 @@
-FROM ubuntu:utopic
+FROM ubuntu:vivid
 
 ENV DEBIAN_FRONTEND noninteractive
 
@@ -9,7 +9,7 @@ RUN apt-get update && apt-get upgrade -q -y && apt-get dist-upgrade -q -y
 RUN apt-get install -q -y unattended-upgrades
 
 # Install usual tools
-RUN apt-get install -q -y wget vim
+RUN apt-get install -q -y wget vim netcat
 
 # Install kibana
 RUN cd /opt && \

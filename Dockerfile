@@ -1,4 +1,4 @@
-FROM ubuntu:utopic
+FROM ubuntu:vivid
 MAINTAINER caktux
 
 ENV DEBIAN_FRONTEND noninteractive
@@ -9,7 +9,7 @@ RUN apt-get upgrade -q -y
 RUN apt-get dist-upgrade -q -y
 
 # Install useful tools
-RUN apt-get install -q -y wget vim git
+RUN apt-get install -q -y sudo wget vim git
 
 # Install requirements
 RUN apt-get install -q -y graphviz-dev libfreetype6-dev pkg-config python python-dev

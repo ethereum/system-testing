@@ -703,12 +703,12 @@ def generate_dag(nodename, client, image):
         options = ('-d '  # using -d, see note in prepare_ami()
                    '--volume /opt/dag:/root/.ethash '
                    '--entrypoint eth')
-        command = "--create-dag -1"
+        command = "--create-dag 0"
     elif client == 'go':
         options = ('-d '
-                   '--volume /opt/dag:/tmp/dag '
+                   '--volume /opt/dag:/opt/dag '
                    '--entrypoint geth')
-        command = "makedag"
+        command = "makedag 0 /opt"
     elif client == 'python':
         options = ('-d '
                    '--volume /opt/data:/opt/data '

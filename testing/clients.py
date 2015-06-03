@@ -25,7 +25,7 @@ opts['go'] = ('-d '
               '-p 30303:30303/udp '
               '-p 8545:8545 '
               '-v /opt/data:/opt/data '
-              '-v /opt/dag:/tmp/dag '
+              '-v /opt/dag:/opt/dag '
               '--log-driver syslog '
               '--entrypoint geth')
 
@@ -48,7 +48,8 @@ cmds['cpp'] = (
     '--public-ip {client_ip} '
     '--remote {bootstrap_ip} '
     '--peers {req_num_peers} '
-    '--session-secret {privkey} '
+    '--import-session-secret {privkey} '
+    '--master 0 '
     '{mining_state}'
 )
 cmds['go'] = (

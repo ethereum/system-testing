@@ -1,4 +1,4 @@
-FROM ubuntu:utopic
+FROM ubuntu:vivid
 MAINTAINER caktux
 
 ENV DEBIAN_FRONTEND noninteractive
@@ -13,7 +13,7 @@ RUN apt-get install -q -y wget vim git
 
 # Install logstash-forwarder
 RUN wget -O - http://packages.elasticsearch.org/GPG-KEY-elasticsearch | apt-key add -
-RUN echo "deb http://packages.elasticsearch.org/logstashforwarder/debian stable main" | sudo tee -a /etc/apt/sources.list.d/elasticsearch.list
+RUN echo "deb http://packages.elasticsearch.org/logstashforwarder/debian stable main" | tee -a /etc/apt/sources.list.d/elasticsearch.list
 RUN apt-get update
 RUN apt-get install -q -y logstash-forwarder
 
