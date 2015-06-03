@@ -3,6 +3,7 @@
 Ethereum system-testing
 
     TODO User-defined identifier (suffix) to allow multiple testers per region
+    TODO Add 'start' command for starting clients manually
     TODO Adaptive bootnode assignments
     TODO Reduce number of calls to Inventory()
     TODO Use contextmanager to send fabric's output to a logger
@@ -99,6 +100,16 @@ def parse_arguments(parser):
         default="b",
         dest="zone",
         help="AWS Zone (default: %(default)s)")
+    parser.add_argument(
+        "-n", "--norun",
+        default=False,
+        dest="norun",
+        help="Do not start clients (default: %(default)s)")
+    parser.add_argument(
+        "-t", "--testnet",
+        default=False,
+        dest="testnet",
+        help="Run on testnet instead of private (default: %(default)s)")
     parser.add_argument(
         "-d", "--debug",
         default=False,
@@ -423,7 +434,7 @@ def main():
 
     # Run scenarios
     # TODO ask to run sequentially or in parallel?
-    run_scenarios(load_scenarios)
+    run_scenarios(load_scenarios, norun=args.norun, testnet=args.testnet)
 
     # Cleanup and teardown
     nodenames = []

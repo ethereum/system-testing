@@ -21,7 +21,7 @@ def balance(endpoint, address_hex):
     return long(r, 16)
 
 
-def transact(endpoint, sender, to, value=0, data=''):
+def transact(endpoint, sender, to, value=0, data='', gas=21000):
     """
     curl -X POST --data
         '{"jsonrpc":"2.0", "method":"eth_sendTransaction", "params": [
@@ -32,7 +32,11 @@ def transact(endpoint, sender, to, value=0, data=''):
         http://54.67.35.229:20000
     """
     c = pyjsonrpc.HttpClient(endpoint)
-    r = c.call('eth_sendTransaction', {'from': sender, 'to': to, 'value': hex(value), 'data': data})
+    r = c.call('eth_sendTransaction', {'from': sender,
+                                       'to': to,
+                                       'value': hex(value).rstrip('L'),
+                                       'gas': hex(gas).rstrip('L'),
+                                       'data': data})
     return r
 
 

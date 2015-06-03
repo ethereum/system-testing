@@ -3,7 +3,7 @@ Ethereum clients support
 """
 
 from testing import Inventory
-from tasks import set_logging, run_containers, stop_containers
+from tasks import set_logging, import_key, run_containers, stop_containers
 from fabric.api import task
 import nodeid_tool
 
@@ -25,7 +25,7 @@ opts['go'] = ('-d '
               '-p 30303:30303/udp '
               '-p 8545:8545 '
               '-v /opt/data:/opt/data '
-              '-v /opt/dag:/opt/dag '
+              '-v /opt/dag:/root/.ethash '
               '--log-driver syslog '
               '--entrypoint geth')
 
@@ -63,7 +63,7 @@ cmds['go'] = (
     '--nodekeyhex={privkey} '
     '--mine={mining_state} '
     '--etherbase primary '
-    '--unlock primary '
+    '--unlock {account} '
     '--password /opt/data/password'
 )
 cmds['python'] = (
@@ -112,7 +112,7 @@ def get_boot_ip_pk(inventory, boot='bootnode-go-0'):
     return d
 
 @task
-def start_clients(clients=[], impls=[], images=None, req_num_peers=7, boot='bootnode-go-0', enable_mining=True):
+def start_clients(clients=[], impls=[], images=None, req_num_peers=25, boot='bootnode-go-0', enable_mining=True, privkey=None, testnet=False):
     """
     Start all clients by IP with a custom config
     """
@@ -121,11 +121,18 @@ def start_clients(clients=[], impls=[], images=None, req_num_peers=7, boot='boot
     assert inventory.es
     assert inventory.bootnodes
 
-    bootnode = get_boot_ip_pk(inventory, boot)
+    # Replace bootnode if on testnet
+    if testnet:
+        bootnode = {
+            "ip": "5.1.83.226",
+            "pk": "487611428e6c99a11a9795a6abe7b529e81315ca6aad66e2a2fc76e3adf263faba0d35466c2f8f68d561dbefa8878d4df5f1f2ddb1fbeab7f42ffb8cd328bd4a"
+        }
+    else:
+        bootnode = get_boot_ip_pk(inventory, boot)
 
     if not clients:
         for nodename, ip in inventory.clients.items():
-            clients.append(ip)
+            clients.append(nodename)
 
     options = {}
     commands = {}
@@ -138,17 +145,25 @@ def start_clients(clients=[], impls=[], images=None, req_num_peers=7, boot='boot
         impl = clients_config[nodename]['impl']
 
         if impl == 'go':
+            if privkey:
+                if images is None:
+                    images = {}
+                    images['go'] = "ethereum/client-go"
+                addr = nodeid_tool.sha3(nodeid_tool._privtopub(privkey))[-20:].encode('hex')
+                import_key(nodename, privkey, images['go'])
+
             commands[nodename] = cmds['go'].format(bootstrap_public_key=bootnode['pk'],
                                                    bootstrap_ip=bootnode['ip'],
                                                    req_num_peers=req_num_peers,
-                                                   privkey=clients_config[nodename]['privkey'],
+                                                   privkey=privkey if privkey else clients_config[nodename]['privkey'],
+                                                   account=addr if privkey else "primary",
                                                    mining_state=enable_mining)
             options[nodename] = opts['go']
         elif impl == 'cpp':
             commands[nodename] = cmds['cpp'].format(bootstrap_ip=bootnode['ip'],
                                                     client_ip=clients_config[nodename]['ip'],
                                                     req_num_peers=req_num_peers,
-                                                    privkey=clients_config[nodename]['privkey'],
+                                                    privkey=privkey if privkey else clients_config[nodename]['privkey'],
                                                     mining_state=('--force-mining '
                                                                   '--mining on' if enable_mining else ''))
             options[nodename] = opts['cpp']
@@ -156,7 +171,7 @@ def start_clients(clients=[], impls=[], images=None, req_num_peers=7, boot='boot
             commands[nodename] = cmds['python'].format(bootstrap_public_key=bootnode['pk'],
                                                        bootstrap_ip=bootnode['ip'],
                                                        req_num_peers=req_num_peers,
-                                                       privkey=clients_config[nodename]['privkey'],
+                                                       privkey=privkey if privkey else clients_config[nodename]['privkey'],
                                                        # mining_state=mining_percentage if enable_mining else '0'
                                                        )
             options[nodename] = opts['python']
@@ -182,28 +197,3 @@ def stop_clients(clients=[], impls=[]):
 
     if nodenames:
         stop_containers(nodenames)
-
-#
-# # Circular import with log_scenario...
-#
-# if __name__ == '__main__':
-#     import sys
-#     args = sys.argv[1:]
-#     # ec2.py peeks into args, so delete passing-variables-on-the-command-line
-#     sys.argv = sys.argv[:1]
-
-#     if 'start' in args:
-#         log_scenario(name='cmd_line', event='start_clients')
-#         start_clients()
-#         log_scenario(name='cmd_line', event='start_clients.done')
-#     elif 'starttest' in args:
-#         print clients_config[u'testnode-go-0']['go']
-#         start_clients([u'testnode-go-0'], boot=0, enable_mining=True)
-#     elif 'stop' in args:
-#         log_scenario(name='cmd_line', event='stop_clients')
-#         stop_clients()
-#         log_scenario(name='cmd_line', event='stop_clients')
-#     elif 'stoptest' in args:
-#         stop_clients([u'testnode-go-0'])
-#     else:
-#         print 'usage:%s start|stop' % sys.argv[0]

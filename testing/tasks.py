@@ -577,7 +577,7 @@ def prepare_ami(region, zone, nodename, es, client, image=None, dag=False, progr
     if client == 'cpp':
         ssh_on(nodename, "sudo mkdir /opt/dag")  # see generate_dag()
     elif client == 'go':
-        ssh_on(nodename, "sudo touch /opt/dag")  # see generate_dag()
+        ssh_on(nodename, "sudo mkdir /opt/dag")  # see generate_dag()
     if dag and client != 'python':
         generate_dag(nodename, client, image)
         # FIXME For some reason, 'docker run' exits with 0
@@ -696,8 +696,8 @@ def generate_dag(nodename, client, image):
     """
 
     # Set options (volume and entrypoint)
-    # C++ saves the DAG cache in the ~/.ethash folder and Go in
-    # the /tmp/dag file, so we have to mount those as volumes,
+    # C++ and Go save the DAG cache in the ~/.ethash folder,
+    # so we have to mount those as volumes,
     # after creating the host folder and file.
     if client == 'cpp':
         options = ('-d '  # using -d, see note in prepare_ami()
@@ -706,9 +706,9 @@ def generate_dag(nodename, client, image):
         command = "--create-dag 0"
     elif client == 'go':
         options = ('-d '
-                   '--volume /opt/dag:/opt/dag '
+                   '--volume /opt/dag:/root/.ethash '
                    '--entrypoint geth')
-        command = "makedag 0 /opt"
+        command = "makedag 0 /root/.ethash"
     elif client == 'python':
         options = ('-d '
                    '--volume /opt/data:/opt/data '
@@ -718,6 +718,20 @@ def generate_dag(nodename, client, image):
         raise ValueError("No implementation: %s" % client)
 
     run_on(nodename, image, options, command)
+
+@task
+def import_key(nodename, privkey, image):
+    ssh_on(nodename, "'echo %s | sudo tee /opt/data/key'" % privkey)
+
+    options = ('-d '
+               '--volume /opt/data:/opt/data '
+               '--entrypoint geth')
+    command = ("--datadir /opt/data "
+               "--password /opt/data/password "
+               "account import /opt/data/key")
+
+    run_on(nodename, image, options, command)
+    stop_on(nodename)
 
 @task
 def run_bootnodes(nodes, images):
@@ -832,12 +846,14 @@ def stop_containers(nodenames):
     logger.info("Stop duration: %ss" % (time.time() - start))
 
 @task
-def run_scenarios(scenarios):
+def run_scenarios(scenarios, norun=False, testnet=False):
     """
     Run test scenarios
     """
     try:
         for scenario in scenarios:
-            local("py.test -vvrs %s" % scenario)
+            norun = "--norun " if norun else ""
+            testnet = "--testnet " if testnet else ""
+            local("py.test -vvrs %s%s%s" % (norun, testnet, scenario))
     except FabricException as e:
         append_log("Exception running scenarios: %r" % e)
